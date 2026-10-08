@@ -261,5 +261,47 @@ class VoiceTranscriptionClient {
             }
             return responseBody
         }
+
+        fun testOpenAIConnection(
+            apiKey: String,
+            customDomain: String = ""
+        ): String {
+            require(apiKey.isNotBlank()) { "OpenAI API key is not configured" }
+            val client = VoiceTranscriptionClient()
+            val domain = customDomain.ifBlank { VoiceInputPreferences.openAIEndpoint() }
+            val targetEndpoint = client.resolveOpenAIEndpoint(domain)
+            val body = buildJsonObject {
+                put("model", JsonPrimitive("gpt-audio-1.5"))
+                put("messages", buildJsonArray {
+                    add(buildJsonObject {
+                        put("role", JsonPrimitive("user"))
+                        put("content", JsonPrimitive("ping"))
+                    })
+                })
+                put("max_tokens", JsonPrimitive(1))
+            }.toString()
+
+            val connection = (URL(targetEndpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 15_000
+                readTimeout = 15_000
+                setRequestProperty("Content-Type", "application/json")
+                if (apiKey.isNotEmpty()) {
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                }
+            }
+            connection.outputStream.use { it.write(body.toByteArray()) }
+            val status = connection.responseCode
+            val responseBody = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                if (status == 404 || responseBody.contains("model_not_found", ignoreCase = true) || responseBody.contains("does not exist", ignoreCase = true)) {
+                    return "Connected successfully, but model 'gpt-audio-1.5' not found on provider ($status)"
+                }
+                throw IllegalStateException("HTTP $status: $responseBody")
+            }
+            return responseBody
+        }
     }
 }

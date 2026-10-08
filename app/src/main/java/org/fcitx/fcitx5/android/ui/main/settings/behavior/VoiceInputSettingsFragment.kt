@@ -219,6 +219,42 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
         })
 
         screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
+        screen.addPreference(Preference(context).apply {
+            title = context.getString(R.string.voice_input_test_openai_connection)
+            summary = context.getString(R.string.voice_input_test_openai_connection_summary)
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                val key = VoiceInputPreferences.openAIKey()
+                if (key.isBlank()) {
+                    Toast.makeText(context, R.string.voice_input_test_openai_key_empty, Toast.LENGTH_SHORT).show()
+                    return@setOnPreferenceClickListener true
+                }
+                val domain = VoiceInputPreferences.openAIEndpoint()
+                isEnabled = false
+                summary = getString(R.string.voice_input_test_openai_testing)
+                lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching {
+                            VoiceTranscriptionClient.testOpenAIConnection(key, domain)
+                        }
+                    }
+                    isEnabled = true
+                    result.onSuccess {
+                        summary = getString(R.string.voice_input_test_openai_success)
+                        Toast.makeText(context, R.string.voice_input_test_openai_success, Toast.LENGTH_SHORT).show()
+                    }.onFailure { error ->
+                        val msg = error.message ?: error.toString()
+                        summary = getString(R.string.voice_input_test_openai_failed, msg)
+                        Toast.makeText(
+                            context,
+                            getString(R.string.voice_input_test_openai_failed, msg),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                true
+            }
+        })
         screen.addPreference(secretPreference(R.string.voice_input_google_key, VoiceInputPreferences.GoogleKey))
         screen.addPreference(Preference(context).apply {
             title = context.getString(R.string.voice_input_test_google_connection)

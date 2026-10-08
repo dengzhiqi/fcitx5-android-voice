@@ -226,6 +226,12 @@
     <string name="voice_input_openai_endpoint">OpenAI API domain</string>
     <string name="voice_input_openai_endpoint_default">Default (https://api.openai.com)</string>
     <string name="voice_input_openai_key">OpenAI API key</string>
+    <string name="voice_input_test_openai_connection">Test OpenAI API connection</string>
+    <string name="voice_input_test_openai_connection_summary">Test current domain, API key and network connectivity</string>
+    <string name="voice_input_test_openai_testing">Testing OpenAI API connection…</string>
+    <string name="voice_input_test_openai_success">OpenAI API connection successful</string>
+    <string name="voice_input_test_openai_failed">OpenAI API connection failed: %1$s</string>
+    <string name="voice_input_test_openai_key_empty">Please configure and save OpenAI API key first</string>
     <string name="voice_input_google_key">Google ASR API key</string>
     <string name="voice_input_test_google_connection">Test Google ASR connection</string>
     <string name="voice_input_test_google_connection_summary">Test current API key and network connectivity</string>

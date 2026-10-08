@@ -152,11 +152,18 @@ object LocalVoiceModel {
         if (!dir.exists() || !dir.isDirectory) return false
         val cfg = configFile()
         if (!cfg.isFile || cfg.length() <= 0) return false
-        if (isCustom()) {
-            // 自定义模型：只要 config.json 存在且非空即视为就绪
-            return true
+
+        // 如果包含官方 Qwen2.5-Omni 清单中的文件，必须全部 9 个文件完整下载且字节数完全吻合
+        val hasOfficialManifest = Files.any { dir.resolve(it.name).exists() }
+        if (hasOfficialManifest) {
+            return Files.all { dir.resolve(it.name).length() == it.size }
         }
-        return Files.all { dir.resolve(it.name).length() == it.size }
+
+        // 如果是第三方自定义模型：目录下必须有 .mnn 格式权重且总大小不少于 50MB
+        val mnnFiles = dir.listFiles { file -> file.isFile && file.name.endsWith(".mnn", ignoreCase = true) }
+        if (mnnFiles.isNullOrEmpty()) return false
+        val totalBytes = dir.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
+        return totalBytes >= 50 * 1024 * 1024L
     }
 
     data class ModelFile(val name: String, val size: Long)

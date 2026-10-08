@@ -226,6 +226,12 @@
     <string name="voice_input_openai_endpoint">OpenAI API 自定义域名</string>
     <string name="voice_input_openai_endpoint_default">默认（https://api.openai.com）</string>
     <string name="voice_input_openai_key">OpenAI API 密钥</string>
+    <string name="voice_input_test_openai_connection">测试 OpenAI API 连接</string>
+    <string name="voice_input_test_openai_connection_summary">测试当前域名、API 密钥与网络连接状态</string>
+    <string name="voice_input_test_openai_testing">正在测试 OpenAI API 连接…</string>
+    <string name="voice_input_test_openai_success">OpenAI API 连接正常</string>
+    <string name="voice_input_test_openai_failed">OpenAI API 连接失败：%1$s</string>
+    <string name="voice_input_test_openai_key_empty">请先配置并保存 OpenAI API 密钥</string>
     <string name="voice_input_google_key">Google ASR API 密钥</string>
     <string name="voice_input_test_google_connection">测试 Google ASR 连接</string>
     <string name="voice_input_test_google_connection_summary">测试当前 API 密钥与网络连接状态</string>

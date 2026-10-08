@@ -96,4 +96,9 @@ class VoiceTranscriptionNormalizerTest {
             client.resolveOpenAIEndpoint("https://custom-proxy.internal/v1/chat/completions")
         )
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun throwsWhenTestingOpenAIConnectionWithEmptyKey() {
+        VoiceTranscriptionClient.testOpenAIConnection(apiKey = "", customDomain = "https://api.openai.com")
+    }
 }
