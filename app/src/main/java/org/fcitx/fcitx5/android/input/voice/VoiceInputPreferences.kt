@@ -10,7 +10,6 @@ object VoiceInputPreferences {
     const val PreferLocal = "voice_input_prefer_local"
     const val KeepModelReady = "voice_input_keep_model_ready"
     const val OpenAIKey = "voice_input_openai_key"
-    const val ZhipuKey = "voice_input_zhipu_key"
     const val Hotwords = "voice_input_hotwords"
 
     private val preferences
@@ -26,12 +25,8 @@ object VoiceInputPreferences {
 
     fun openAIKey() = preferences.getString(OpenAIKey, "").orEmpty().trim()
 
-    fun zhipuKey() = preferences.getString(ZhipuKey, "").orEmpty().trim()
-
     fun isAvailable() =
-        (preferLocal() && LocalMnnEngine.isReady()) ||
-            if (VoiceTranscriptionClient.isCurrentTimeZoneChina()) zhipuKey().isNotEmpty()
-            else openAIKey().isNotEmpty()
+        (preferLocal() && LocalMnnEngine.isReady()) || openAIKey().isNotEmpty()
 
     fun hotwords(): List<String> = preferences.getString(Hotwords, "").orEmpty()
         .split(',', '\n')

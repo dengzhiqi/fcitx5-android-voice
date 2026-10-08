@@ -237,14 +237,8 @@ class VoiceInputController(
 
     private fun missingRemoteKeyMessage(): Int? {
         if (VoiceInputPreferences.isAvailable()) return null
-        return if (VoiceTranscriptionClient.isCurrentTimeZoneChina()) {
-            R.string.voice_input_missing_zhipu_key.takeIf {
-                VoiceInputPreferences.zhipuKey().isEmpty()
-            }
-        } else {
-            R.string.voice_input_missing_openai_key.takeIf {
-                VoiceInputPreferences.openAIKey().isEmpty()
-            }
+        return R.string.voice_input_missing_openai_key.takeIf {
+            VoiceInputPreferences.openAIKey().isEmpty()
         }
     }
 

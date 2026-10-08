@@ -10,8 +10,7 @@ upstream keyboard and input engines intact.
 3. Hold the space bar to record, release to transcribe and commit, or swipe up
    before releasing to cancel.
 
-The remote provider is selected from the device time zone: China time zones use
-Zhipu `glm-asr-2512`; other time zones use OpenAI `gpt-audio-1.5`. Each request
+The remote provider uses OpenAI `gpt-audio-1.5`. Each request
 contains the WAV recording, up to 8,000 characters before the cursor, and the
 configured hotwords.
 
@@ -20,7 +19,7 @@ model entry in Voice input settings to resume-download the 2.55 GiB input-only
 subset of `taobao-mnn/Qwen2.5-Omni-3B-MNN`, pinned to model revision
 `00dc2e9131a4bb325b43a47f4210dd6450116687`. MNN receives the original WAV in an
 `<audio>` prompt together with the same editor context and hotwords. If the model
-is absent, the app falls back to the regional remote provider.
+is absent, the app falls back to the remote provider.
 
 API keys remain in Android app preferences. Audio is written to the app cache,
 deleted after transcription, and is sent only to the selected engine.

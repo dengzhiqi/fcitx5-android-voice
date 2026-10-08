@@ -201,14 +201,13 @@
     <string name="space_behavior_voice_input">Voice input</string>
     <string name="voice_input_settings">Voice input</string>
     <string name="voice_input_prefer_local">Prefer local MNN engine</string>
-    <string name="voice_input_prefer_local_summary">Use Qwen2.5-Omni-3B-MNN when installed, otherwise use the regional remote engine</string>
+    <string name="voice_input_prefer_local_summary">Use Qwen2.5-Omni-3B-MNN when installed, otherwise use the remote engine</string>
     <string name="voice_input_local_model">Qwen2.5-Omni-3B-MNN model</string>
     <string name="voice_input_model_download">Tap to download 2.55 GiB (Wi-Fi recommended)</string>
     <string name="voice_input_model_downloading">Downloading local model… %1$d%%</string>
     <string name="voice_input_model_ready">Installed and ready</string>
     <string name="voice_input_model_download_failed">Download failed: %1$s (tap to resume)</string>
     <string name="voice_input_openai_key">OpenAI API key</string>
-    <string name="voice_input_zhipu_key">Zhipu API key</string>
     <string name="voice_input_hotwords">Hotwords</string>
     <string name="voice_input_hotwords_summary">Separate hotwords with commas or new lines</string>
     <string name="voice_input_key_saved">Saved</string>
@@ -219,7 +218,6 @@
     <string name="voice_input_processing">Transcribing…</string>
     <string name="voice_input_missing_permission">Microphone permission is required</string>
     <string name="voice_input_missing_openai_key">Set the OpenAI API key in Fcitx5 Voice settings</string>
-    <string name="voice_input_missing_zhipu_key">Set the Zhipu API key in Fcitx5 Voice settings</string>
     <string name="voice_input_failed">Voice input failed: %1$s</string>
     <string name="voice_input_empty">No speech recognized</string>
     <string name="voice_input_keep_model_ready">Keep local voice model ready</string>

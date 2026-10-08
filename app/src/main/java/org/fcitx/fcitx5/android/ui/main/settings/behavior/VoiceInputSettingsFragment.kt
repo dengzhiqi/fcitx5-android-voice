@@ -83,7 +83,6 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             }
         })
         screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
-        screen.addPreference(secretPreference(R.string.voice_input_zhipu_key, VoiceInputPreferences.ZhipuKey))
         screen.addPreference(EditTextPreference(context).apply {
             key = VoiceInputPreferences.Hotwords
             title = context.getString(R.string.voice_input_hotwords)

@@ -201,14 +201,13 @@
     <string name="space_behavior_voice_input">语音输入</string>
     <string name="voice_input_settings">语音输入</string>
     <string name="voice_input_prefer_local">优先使用本地 MNN 引擎</string>
-    <string name="voice_input_prefer_local_summary">已安装模型时使用 Qwen2.5-Omni-3B-MNN，否则使用按时区选择的远端引擎</string>
+    <string name="voice_input_prefer_local_summary">已安装模型时使用 Qwen2.5-Omni-3B-MNN，否则使用远端引擎</string>
     <string name="voice_input_local_model">Qwen2.5-Omni-3B-MNN 模型</string>
     <string name="voice_input_model_download">点按下载 2.55 GiB（建议使用 Wi-Fi）</string>
     <string name="voice_input_model_downloading">正在下载本地模型… %1$d%%</string>
     <string name="voice_input_model_ready">已安装，可以使用</string>
     <string name="voice_input_model_download_failed">下载失败：%1$s（点按继续）</string>
     <string name="voice_input_openai_key">OpenAI API 密钥</string>
-    <string name="voice_input_zhipu_key">智谱 API 密钥</string>
     <string name="voice_input_hotwords">用户热词</string>
     <string name="voice_input_hotwords_summary">使用逗号或换行分隔热词</string>
     <string name="voice_input_key_saved">已保存</string>
@@ -219,7 +218,6 @@
     <string name="voice_input_processing">正在转写…</string>
     <string name="voice_input_missing_permission">需要麦克风权限</string>
     <string name="voice_input_missing_openai_key">请在小企鹅语音输入法设置中填写 OpenAI API 密钥</string>
-    <string name="voice_input_missing_zhipu_key">请在小企鹅语音输入法设置中填写智谱 API 密钥</string>
     <string name="voice_input_failed">语音输入失败：%1$s</string>
     <string name="voice_input_empty">没有识别到语音</string>
     <string name="voice_input_keep_model_ready">保持本地语音模型就绪</string>
