@@ -20,8 +20,11 @@ import java.io.File
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.TimeZone
 import java.util.UUID
+
+enum class RemoteProvider { ZHIPU, OPENAI, GOOGLE }
 
 class VoiceTranscriptionClient {
     fun beginLocalSession(context: String, hotwords: List<String>, targetLanguage: String): Boolean {
@@ -47,10 +50,10 @@ class VoiceTranscriptionClient {
             return LocalMnnEngine.transcribe(audio, targetLanguage, onPartial)
         }
         val precedingText = context + alreadyInput
-        return if (isCurrentTimeZoneChina()) {
-            transcribeWithZhipu(audio, precedingText, hotwords)
-        } else {
-            transcribeWithOpenAI(audio, precedingText, hotwords, targetLanguage)
+        return when (resolveRemoteProvider()) {
+            RemoteProvider.ZHIPU -> transcribeWithZhipu(audio, precedingText, hotwords)
+            RemoteProvider.OPENAI -> transcribeWithOpenAI(audio, precedingText, hotwords, targetLanguage)
+            RemoteProvider.GOOGLE -> transcribeWithGoogle(audio, hotwords, targetLanguage)
         }
     }
 
@@ -90,7 +93,7 @@ class VoiceTranscriptionClient {
             prompt,
             audio.length()
         )
-        val response = postJson(OpenAIEndpoint, key, body)
+        val response = postJson(VoiceInputPreferences.openAIEndpoint(), key, body)
         Timber.d("OpenAI response: %s", response)
         val root = Json.parseToJsonElement(response).jsonObject
         val content = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject
@@ -139,6 +142,77 @@ class VoiceTranscriptionClient {
             ?.jsonPrimitive?.contentOrNull.orEmpty().trim()
     }
 
+    private fun transcribeWithGoogle(
+        audio: File,
+        hotwords: List<String>,
+        targetLanguage: String
+    ): String {
+        val key = VoiceInputPreferences.googleKey()
+        require(key.isNotEmpty()) { "Google API key is not configured" }
+        // Google expects BCP-47 (zh-CN); fcitx may report zh_CN
+        val language = targetLanguage.replace('_', '-').ifBlank { "zh-CN" }
+        val pcm = extractPcm16(audio.readBytes())
+        val audioBase64 = Base64.encodeToString(pcm, Base64.NO_WRAP)
+        val body = buildJsonObject {
+            put("config", buildJsonObject {
+                put("encoding", JsonPrimitive("LINEAR16"))
+                put("sampleRateHertz", JsonPrimitive(SampleRateHertz))
+                put("languageCode", JsonPrimitive(language))
+                put("enableAutomaticPunctuation", JsonPrimitive(true))
+                if (hotwords.isNotEmpty()) {
+                    put("speechContexts", buildJsonArray {
+                        add(buildJsonObject {
+                            put("phrases", buildJsonArray {
+                                hotwords.take(MaxHotwords).forEach { add(JsonPrimitive(it)) }
+                            })
+                        })
+                    })
+                }
+            })
+            put("audio", buildJsonObject {
+                put("content", JsonPrimitive(audioBase64))
+            })
+        }.toString()
+        Timber.d(
+            "Google request: language=%s hotwords=%d audioBytes=%d",
+            language,
+            hotwords.size,
+            pcm.size
+        )
+        val endpoint = "$GoogleEndpoint?key=${URLEncoder.encode(key, Charsets.UTF_8.name())}"
+        val response = postJsonNoAuth(endpoint, body)
+        Timber.d("Google response: %s", response)
+        val separator =
+            if (language.startsWith("zh") || language.startsWith("ja") || language.startsWith("ko")) ""
+            else " "
+        return Json.parseToJsonElement(response).jsonObject["results"]?.jsonArray
+            ?.mapNotNull { result ->
+                result.jsonObject["alternatives"]?.jsonArray?.firstOrNull()?.jsonObject
+                    ?.get("transcript")?.jsonPrimitive?.contentOrNull
+            }
+            ?.joinToString(separator)?.trim().orEmpty()
+    }
+
+    /**
+     * Returns the raw PCM16 payload of a WAV file by locating the "data" chunk.
+     * Falls back to skipping the standard 44-byte header.
+     */
+    internal fun extractPcm16(wav: ByteArray): ByteArray {
+        var offset = 12 // skip "RIFF" + size + "WAVE"
+        while (offset + 8 <= wav.size) {
+            val chunkId = String(wav, offset, 4, Charsets.US_ASCII)
+            val chunkSize = (wav[offset + 4].toInt() and 0xFF) or
+                ((wav[offset + 5].toInt() and 0xFF) shl 8) or
+                ((wav[offset + 6].toInt() and 0xFF) shl 16) or
+                ((wav[offset + 7].toInt() and 0xFF) shl 24)
+            if (chunkId == "data") {
+                return wav.copyOfRange(offset + 8, wav.size)
+            }
+            offset += 8 + chunkSize
+        }
+        return wav.copyOfRange(minOf(WavHeaderSize, wav.size), wav.size)
+    }
+
     internal fun transcriptionPrompt(
         precedingText: String,
         hotwords: List<String>,
@@ -155,6 +229,18 @@ class VoiceTranscriptionClient {
 
     private fun postJson(endpoint: String, key: String, body: String): String {
         val connection = openConnection(endpoint, key).apply {
+            setRequestProperty("Content-Type", "application/json")
+        }
+        connection.outputStream.use { it.write(body.toByteArray()) }
+        return readResponse(connection)
+    }
+
+    private fun postJsonNoAuth(endpoint: String, body: String): String {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            connectTimeout = 30_000
+            readTimeout = 90_000
             setRequestProperty("Content-Type", "application/json")
         }
         connection.outputStream.use { it.write(body.toByteArray()) }
@@ -181,9 +267,12 @@ class VoiceTranscriptionClient {
     }
 
     companion object {
-        private const val OpenAIEndpoint = "https://api.openai.com/v1/chat/completions"
         private const val ZhipuEndpoint = "https://open.bigmodel.cn/api/paas/v4/audio/transcriptions"
+        private const val GoogleEndpoint = "https://speech.googleapis.com/v1/speech:recognize"
         private const val MaxContextChars = 200
+        private const val MaxHotwords = 100
+        private const val SampleRateHertz = 16_000
+        private const val WavHeaderSize = 44
         private val ChinaTimeZones = setOf(
             "Asia/Shanghai",
             "Asia/Chongqing",
@@ -194,5 +283,12 @@ class VoiceTranscriptionClient {
         )
 
         fun isCurrentTimeZoneChina() = TimeZone.getDefault().id in ChinaTimeZones
+
+        fun resolveRemoteProvider(): RemoteProvider = when (VoiceInputPreferences.remoteProvider()) {
+            VoiceInputPreferences.RemoteProviderZhipu -> RemoteProvider.ZHIPU
+            VoiceInputPreferences.RemoteProviderOpenAI -> RemoteProvider.OPENAI
+            VoiceInputPreferences.RemoteProviderGoogle -> RemoteProvider.GOOGLE
+            else -> if (isCurrentTimeZoneChina()) RemoteProvider.ZHIPU else RemoteProvider.OPENAI
+        }
     }
 }

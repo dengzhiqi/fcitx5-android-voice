@@ -237,14 +237,19 @@ class VoiceInputController(
 
     private fun missingRemoteKeyMessage(): Int? {
         if (VoiceInputPreferences.isAvailable()) return null
-        return if (VoiceTranscriptionClient.isCurrentTimeZoneChina()) {
-            R.string.voice_input_missing_zhipu_key.takeIf {
-                VoiceInputPreferences.zhipuKey().isEmpty()
-            }
-        } else {
-            R.string.voice_input_missing_openai_key.takeIf {
-                VoiceInputPreferences.openAIKey().isEmpty()
-            }
+        return when (VoiceTranscriptionClient.resolveRemoteProvider()) {
+            RemoteProvider.ZHIPU ->
+                R.string.voice_input_missing_zhipu_key.takeIf {
+                    VoiceInputPreferences.zhipuKey().isEmpty()
+                }
+            RemoteProvider.OPENAI ->
+                R.string.voice_input_missing_openai_key.takeIf {
+                    VoiceInputPreferences.openAIKey().isEmpty()
+                }
+            RemoteProvider.GOOGLE ->
+                R.string.voice_input_missing_google_key.takeIf {
+                    VoiceInputPreferences.googleKey().isEmpty()
+                }
         }
     }
 

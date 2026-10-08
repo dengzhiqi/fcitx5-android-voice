@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.text.InputType
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
@@ -83,7 +84,42 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             }
         })
         screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
+        screen.addPreference(EditTextPreference(context).apply {
+            key = VoiceInputPreferences.OpenAIEndpointPref
+            title = context.getString(R.string.voice_input_openai_endpoint)
+            summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
+                preference.text?.trim().orEmpty().ifEmpty { VoiceInputPreferences.DefaultOpenAIEndpoint }
+            }
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                it.isSingleLine = true
+                if (it.text.isNullOrBlank()) it.setText(VoiceInputPreferences.DefaultOpenAIEndpoint)
+            }
+        })
         screen.addPreference(secretPreference(R.string.voice_input_zhipu_key, VoiceInputPreferences.ZhipuKey))
+        screen.addPreference(secretPreference(R.string.voice_input_google_key, VoiceInputPreferences.GoogleKey))
+        screen.addPreference(ListPreference(context).apply {
+            key = VoiceInputPreferences.RemoteProviderPref
+            title = context.getString(R.string.voice_input_remote_provider)
+            entries = arrayOf(
+                context.getString(R.string.voice_input_remote_provider_auto),
+                context.getString(R.string.voice_input_remote_provider_zhipu),
+                context.getString(R.string.voice_input_remote_provider_openai),
+                context.getString(R.string.voice_input_remote_provider_google)
+            )
+            entryValues = arrayOf(
+                VoiceInputPreferences.RemoteProviderAuto,
+                VoiceInputPreferences.RemoteProviderZhipu,
+                VoiceInputPreferences.RemoteProviderOpenAI,
+                VoiceInputPreferences.RemoteProviderGoogle
+            )
+            setDefaultValue(VoiceInputPreferences.RemoteProviderAuto)
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+        })
         screen.addPreference(EditTextPreference(context).apply {
             key = VoiceInputPreferences.Hotwords
             title = context.getString(R.string.voice_input_hotwords)

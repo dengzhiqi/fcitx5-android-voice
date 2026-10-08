@@ -6,14 +6,21 @@ upstream keyboard and input engines intact.
 ## Use
 
 1. Install the arm64 APK and enable **Fcitx5 Voice** as an Android input method.
-2. Open **Keyboard settings → Voice input** and configure the applicable API key.
+2. Open **Keyboard settings → Voice input**, pick a remote engine and configure
+   the applicable API key.
 3. Hold the space bar to record, release to transcribe and commit, or swipe up
    before releasing to cancel.
 
-The remote provider is selected from the device time zone: China time zones use
-Zhipu `glm-asr-2512`; other time zones use OpenAI `gpt-audio-1.5`. Each request
-contains the WAV recording, up to 8,000 characters before the cursor, and the
-configured hotwords.
+The remote provider defaults to the device time zone: China time zones use
+Zhipu `glm-asr-2512`; other time zones use OpenAI `gpt-audio-1.5`. It can be
+overridden in settings with **Remote speech engine**: Zhipu, OpenAI, or Google
+Cloud Speech-to-Text (`speech:recognize`, LINEAR16 16 kHz, API key in the
+`key` query parameter). The OpenAI chat-completions endpoint is also
+configurable (**OpenAI API endpoint**, defaults to
+`https://api.openai.com/v1/chat/completions`), so any OpenAI-compatible API
+can be used. Each request contains the WAV recording, up to 8,000
+characters before the cursor, and the configured hotwords (sent as
+`speechContexts` phrases to Google).
 
 Local inference is enabled by default when the model is installed. Tap the local
 model entry in Voice input settings to resume-download the 2.55 GiB input-only
