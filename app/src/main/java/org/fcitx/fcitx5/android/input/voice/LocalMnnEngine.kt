@@ -9,7 +9,7 @@ import java.io.File
 import java.nio.charset.CharacterCodingException
 
 object LocalMnnEngine {
-    fun isReady() = LocalVoiceModel.isReady()
+    fun isReady() = LocalVoiceModel.currentSpec() is LocalModelSpec.QwenOmniMnn && LocalVoiceModel.isReady()
 
     fun prewarm() {
         check(isReady()) { "The local MNN model is not installed" }
@@ -147,23 +147,30 @@ object LocalVoiceModel {
 
     fun configFile(): File = directory().resolve("config.json")
 
+    fun currentSpec(): LocalModelSpec? {
+        return LocalModelSpec.detect(directory())
+    }
+
     fun isReady(): Boolean {
         val dir = directory()
         if (!dir.exists() || !dir.isDirectory) return false
-        val cfg = configFile()
-        if (!cfg.isFile || cfg.length() <= 0) return false
-
-        // 如果包含官方 Qwen2.5-Omni 清单中的文件，必须全部 9 个文件完整下载且字节数完全吻合
-        val hasOfficialManifest = Files.any { dir.resolve(it.name).exists() }
-        if (hasOfficialManifest) {
-            return Files.all { dir.resolve(it.name).length() == it.size }
+        val spec = currentSpec() ?: return false
+        return when (spec) {
+            is LocalModelSpec.SherpaSpec -> true
+            is LocalModelSpec.QwenOmniMnn -> {
+                val cfg = configFile()
+                if (!cfg.isFile || cfg.length() <= 0) return false
+                val hasOfficialManifest = Files.any { dir.resolve(it.name).exists() }
+                if (hasOfficialManifest) {
+                    Files.all { dir.resolve(it.name).length() == it.size }
+                } else {
+                    val mnnFiles = dir.listFiles { file -> file.isFile && file.name.endsWith(".mnn", ignoreCase = true) }
+                    if (mnnFiles.isNullOrEmpty()) return false
+                    val totalBytes = dir.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
+                    totalBytes >= 50 * 1024 * 1024L
+                }
+            }
         }
-
-        // 如果是第三方自定义模型：目录下必须有 .mnn 格式权重且总大小不少于 50MB
-        val mnnFiles = dir.listFiles { file -> file.isFile && file.name.endsWith(".mnn", ignoreCase = true) }
-        if (mnnFiles.isNullOrEmpty()) return false
-        val totalBytes = dir.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
-        return totalBytes >= 50 * 1024 * 1024L
     }
 
     data class ModelFile(val name: String, val size: Long)

@@ -4,6 +4,7 @@
 package org.fcitx.fcitx5.android.input.voice
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VoiceTranscriptionNormalizerTest {
@@ -108,5 +109,32 @@ class VoiceTranscriptionNormalizerTest {
     @Test(expected = IllegalArgumentException::class)
     fun throwsWhenTestingOpenAIConnectionWithEmptyKey() {
         VoiceTranscriptionClient.testOpenAIConnection(apiKey = "", customDomain = "https://api.openai.com")
+    }
+
+    @Test
+    fun detectsSherpaSenseVoiceModel() {
+        val tempDir = java.nio.file.Files.createTempDirectory("test_sensevoice").toFile()
+        try {
+            tempDir.resolve("tokens.txt").writeText("dummy")
+            tempDir.resolve("model.int8.onnx").writeText("dummy")
+            val spec = LocalModelSpec.detect(tempDir)
+            assertTrue(spec is LocalModelSpec.SherpaSpec.SenseVoice)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun detectsSherpaWhisperModel() {
+        val tempDir = java.nio.file.Files.createTempDirectory("test_whisper").toFile()
+        try {
+            tempDir.resolve("tokens.txt").writeText("dummy")
+            tempDir.resolve("whisper-encoder.onnx").writeText("dummy")
+            tempDir.resolve("whisper-decoder.onnx").writeText("dummy")
+            val spec = LocalModelSpec.detect(tempDir)
+            assertTrue(spec is LocalModelSpec.SherpaSpec.Whisper)
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 }

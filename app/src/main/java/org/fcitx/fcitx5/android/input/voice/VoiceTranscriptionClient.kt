@@ -23,14 +23,29 @@ import java.nio.ByteOrder
 
 class VoiceTranscriptionClient {
     fun beginLocalSession(context: String, hotwords: List<String>, targetLanguage: String): Boolean {
-        if (!VoiceInputPreferences.preferLocal() || !LocalMnnEngine.isReady()) return false
-        LocalMnnEngine.beginSession(context, hotwords, targetLanguage)
-        return true
+        if (!VoiceInputPreferences.preferLocal()) return false
+        if (LocalSherpaEngine.isReady()) {
+            LocalSherpaEngine.prewarm()
+            return true
+        }
+        if (LocalMnnEngine.isReady()) {
+            LocalMnnEngine.beginSession(context, hotwords, targetLanguage)
+            return true
+        }
+        return false
     }
 
-    fun commitLocalTranscript(transcript: String) = LocalMnnEngine.commitTranscript(transcript)
+    fun commitLocalTranscript(transcript: String) {
+        if (LocalMnnEngine.isReady()) {
+            LocalMnnEngine.commitTranscript(transcript)
+        }
+    }
 
-    fun endLocalSession() = LocalMnnEngine.endSession()
+    fun endLocalSession() {
+        if (LocalMnnEngine.isReady()) {
+            LocalMnnEngine.endSession()
+        }
+    }
 
     suspend fun transcribe(
         audio: File,
@@ -42,7 +57,12 @@ class VoiceTranscriptionClient {
         onPartial: (String) -> Unit
     ): String {
         if (localSession) {
-            return LocalMnnEngine.transcribe(audio, targetLanguage, onPartial)
+            if (LocalSherpaEngine.isReady()) {
+                return LocalSherpaEngine.transcribe(audio, targetLanguage, onPartial)
+            }
+            if (LocalMnnEngine.isReady()) {
+                return LocalMnnEngine.transcribe(audio, targetLanguage, onPartial)
+            }
         }
         val precedingText = context + alreadyInput
         return if (VoiceInputPreferences.remoteProvider() == VoiceInputPreferences.ProviderGoogle) {
@@ -420,6 +440,24 @@ class VoiceTranscriptionClient {
                 out.write("data".toByteArray())
                 out.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(pcmDataSize).array())
                 out.write(ByteArray(pcmDataSize))
+            }
+        }
+
+        fun testLocalModel(): String {
+            if (LocalSherpaEngine.isReady()) {
+                val tempWav = File.createTempFile("test_sherpa", ".wav")
+                try {
+                    createSilentWav(tempWav, durationMs = 200)
+                    LocalSherpaEngine.prewarm()
+                    LocalSherpaEngine.transcribe(tempWav)
+                    return "本地引擎 [${LocalSherpaEngine.currentModelName()}] 运行正常"
+                } finally {
+                    tempWav.delete()
+                }
+            } else if (LocalMnnEngine.isReady()) {
+                return "本地 MNN-LLM 引擎已就绪"
+            } else {
+                throw IllegalStateException("未检测到就绪的本地语音模型，请确认模型文件是否完整")
             }
         }
     }

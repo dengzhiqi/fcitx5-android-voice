@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.input.voice.LocalSherpaEngine
 import org.fcitx.fcitx5.android.input.voice.LocalVoiceModel
 import org.fcitx.fcitx5.android.input.voice.LocalVoiceModelDownloader
 import org.fcitx.fcitx5.android.input.voice.ModelKeepAliveService
@@ -168,6 +169,37 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
         }
         customModelPathPref = pathPref
         screen.addPreference(pathPref)
+
+        screen.addPreference(Preference(context).apply {
+            title = context.getString(R.string.voice_input_test_local_model)
+            summary = context.getString(R.string.voice_input_test_local_model_summary)
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                if (!LocalVoiceModel.isReady()) {
+                    Toast.makeText(context, R.string.voice_input_test_local_model_failed, Toast.LENGTH_SHORT).show()
+                    return@setOnPreferenceClickListener true
+                }
+                isEnabled = false
+                summary = getString(R.string.voice_input_test_local_model_testing)
+                lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching {
+                            VoiceTranscriptionClient.testLocalModel()
+                        }
+                    }
+                    isEnabled = true
+                    result.onSuccess { msg ->
+                        summary = getString(R.string.voice_input_test_local_model_success, msg)
+                        Toast.makeText(context, getString(R.string.voice_input_test_local_model_success, msg), Toast.LENGTH_SHORT).show()
+                    }.onFailure { error ->
+                        val msg = error.message ?: error.toString()
+                        summary = getString(R.string.voice_input_test_local_model_failed, msg)
+                        Toast.makeText(context, getString(R.string.voice_input_test_local_model_failed, msg), Toast.LENGTH_LONG).show()
+                    }
+                }
+                true
+            }
+        })
 
         val keepAliveSwitch = SwitchPreferenceCompat(context).apply {
             key = VoiceInputPreferences.KeepModelReady
@@ -429,10 +461,11 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
 
     private fun localModelSummary(): String {
         return if (LocalVoiceModel.isReady()) {
+            val modelName = LocalSherpaEngine.currentModelName()
             if (LocalVoiceModel.isCustom()) {
-                getString(R.string.voice_input_custom_model_ready, LocalVoiceModel.directory().absolutePath)
+                "[$modelName] ${getString(R.string.voice_input_custom_model_ready, LocalVoiceModel.directory().absolutePath)}"
             } else {
-                getString(R.string.voice_input_model_ready)
+                "[$modelName] ${getString(R.string.voice_input_model_ready)}"
             }
         } else {
             if (LocalVoiceModel.isCustom()) {

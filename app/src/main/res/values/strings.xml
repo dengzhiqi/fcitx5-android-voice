@@ -219,7 +219,12 @@
     <string name="voice_input_custom_model_path">Custom model path</string>
     <string name="voice_input_custom_model_path_default">Not set (use default directory)</string>
     <string name="voice_input_custom_model_ready">Custom model ready: %1$s</string>
-    <string name="voice_input_custom_model_not_found">Custom model not ready (missing config.json): %1$s</string>
+    <string name="voice_input_custom_model_not_found">Custom model not ready (missing valid model files): %1$s</string>
+    <string name="voice_input_test_local_model">Test local model inference</string>
+    <string name="voice_input_test_local_model_summary">Verify if the local model can load and transcribe properly</string>
+    <string name="voice_input_test_local_model_testing">Testing local model inference…</string>
+    <string name="voice_input_test_local_model_success">Local model test passed: %1$s</string>
+    <string name="voice_input_test_local_model_failed">Local model test failed: %1$s</string>
     <string name="voice_input_remote_provider">Remote voice engine</string>
     <string name="voice_input_provider_openai">OpenAI (GPT-Audio)</string>
     <string name="voice_input_provider_google">Google Cloud Speech-to-Text</string>

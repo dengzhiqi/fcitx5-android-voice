@@ -219,7 +219,12 @@
     <string name="voice_input_custom_model_path">自定义模型路径</string>
     <string name="voice_input_custom_model_path_default">未设置（使用默认目录）</string>
     <string name="voice_input_custom_model_ready">已加载自定义模型：%1$s</string>
-    <string name="voice_input_custom_model_not_found">自定义模型未就绪（未找到有效 config.json）：%1$s</string>
+    <string name="voice_input_custom_model_not_found">自定义模型未就绪（未找到有效模型文件）：%1$s</string>
+    <string name="voice_input_test_local_model">测试本地模型推理</string>
+    <string name="voice_input_test_local_model_summary">测试当前本地模型能否成功加载并完成语音转录</string>
+    <string name="voice_input_test_local_model_testing">正在测试本地模型推理…</string>
+    <string name="voice_input_test_local_model_success">本地模型测试通过：%1$s</string>
+    <string name="voice_input_test_local_model_failed">本地模型测试失败：%1$s</string>
     <string name="voice_input_remote_provider">远程语音引擎</string>
     <string name="voice_input_provider_openai">OpenAI (GPT-Audio)</string>
     <string name="voice_input_provider_google">Google Cloud Speech-to-Text</string>
