@@ -207,6 +207,9 @@
     <string name="voice_input_model_downloading">正在下载本地模型… %1$d%%</string>
     <string name="voice_input_model_ready">已安装，可以使用</string>
     <string name="voice_input_model_download_failed">下载失败：%1$s（点按继续）</string>
+    <string name="voice_input_choose_model_directory">选择模型目录</string>
+    <string name="voice_input_choose_model_directory_summary">通过系统文件选择框选取手机上的模型文件夹</string>
+    <string name="voice_input_model_path_resolve_failed">无法解析所选目录的实际路径</string>
     <string name="voice_input_custom_model_path">自定义模型路径</string>
     <string name="voice_input_custom_model_path_default">未设置（使用默认目录）</string>
     <string name="voice_input_custom_model_ready">已加载自定义模型：%1$s</string>
@@ -214,8 +217,16 @@
     <string name="voice_input_remote_provider">远程语音引擎</string>
     <string name="voice_input_provider_openai">OpenAI (GPT-Audio)</string>
     <string name="voice_input_provider_google">Google Cloud Speech-to-Text</string>
+    <string name="voice_input_openai_endpoint">OpenAI API 自定义域名</string>
+    <string name="voice_input_openai_endpoint_default">默认（https://api.openai.com）</string>
     <string name="voice_input_openai_key">OpenAI API 密钥</string>
     <string name="voice_input_google_key">Google ASR API 密钥</string>
+    <string name="voice_input_test_google_connection">测试 Google ASR 连接</string>
+    <string name="voice_input_test_google_connection_summary">测试当前 API 密钥与网络连接状态</string>
+    <string name="voice_input_test_google_testing">正在测试 Google ASR 连接…</string>
+    <string name="voice_input_test_google_success">Google ASR 连接正常</string>
+    <string name="voice_input_test_google_failed">Google ASR 连接失败：%1$s</string>
+    <string name="voice_input_test_google_key_empty">请先配置并保存 Google ASR 密钥</string>
     <string name="voice_input_hotwords">用户热词</string>
     <string name="voice_input_hotwords_summary">使用逗号或换行分隔热词</string>
     <string name="voice_input_key_saved">已保存</string>

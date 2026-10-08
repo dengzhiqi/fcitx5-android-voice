@@ -3,8 +3,13 @@
  */
 package org.fcitx.fcitx5.android.ui.main.settings.behavior
 
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.text.InputType
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
@@ -19,11 +24,73 @@ import org.fcitx.fcitx5.android.input.voice.LocalVoiceModel
 import org.fcitx.fcitx5.android.input.voice.LocalVoiceModelDownloader
 import org.fcitx.fcitx5.android.input.voice.ModelKeepAliveService
 import org.fcitx.fcitx5.android.input.voice.VoiceInputPreferences
+import org.fcitx.fcitx5.android.input.voice.VoiceTranscriptionClient
 import org.fcitx.fcitx5.android.ui.common.PaddingPreferenceFragment
+import java.io.File
 
 class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
     private var localModelPref: Preference? = null
+    private var customModelPathPref: EditTextPreference? = null
     private var keepAlivePref: SwitchPreferenceCompat? = null
+
+    private val chooseDirectoryLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            val path = uriToAbsolutePath(uri)
+            if (!path.isNullOrBlank()) {
+                VoiceInputPreferences.setCustomModelPath(path)
+                customModelPathPref?.text = path
+                localModelPref?.summary = localModelSummary()
+                updateKeepAliveState()
+                val configFile = File(path, "config.json")
+                if (configFile.exists() && configFile.length() > 0) {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.voice_input_custom_model_ready, path),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.voice_input_custom_model_not_found, path),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.voice_input_model_path_resolve_failed,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+    private fun uriToAbsolutePath(uri: Uri): String? {
+        val docId = runCatching {
+            if (DocumentsContract.isTreeUri(uri)) {
+                DocumentsContract.getTreeDocumentId(uri)
+            } else {
+                DocumentsContract.getDocumentId(uri)
+            }
+        }.getOrNull() ?: uri.path ?: return null
+
+        val split = docId.split(":")
+        if (split.isNotEmpty()) {
+            val type = split[0]
+            val relativePath = if (split.size > 1) split.subList(1, split.size).joinToString(":") else ""
+            if ("primary".equals(type, ignoreCase = true)) {
+                val root = Environment.getExternalStorageDirectory().absolutePath
+                return if (relativePath.isNotEmpty()) "$root/$relativePath" else root
+            } else if (type.isNotEmpty()) {
+                val candidate1 = "/storage/$type" + if (relativePath.isNotEmpty()) "/$relativePath" else ""
+                if (File(candidate1).exists()) return candidate1
+                val candidate2 = "/storage/emulated/0" + if (relativePath.isNotEmpty()) "/$relativePath" else ""
+                if (File(candidate2).exists()) return candidate2
+                return candidate1
+            }
+        }
+        return uri.path
+    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         preferenceScreen = preferenceManager.createPreferenceScreen(requireContext()).also { screen ->
@@ -76,7 +143,17 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
         localModelPref = modelPref
         screen.addPreference(modelPref)
 
-        screen.addPreference(EditTextPreference(context).apply {
+        screen.addPreference(Preference(context).apply {
+            title = context.getString(R.string.voice_input_choose_model_directory)
+            summary = context.getString(R.string.voice_input_choose_model_directory_summary)
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                chooseDirectoryLauncher.launch(null)
+                true
+            }
+        })
+
+        val pathPref = EditTextPreference(context).apply {
             key = VoiceInputPreferences.CustomModelPath
             title = context.getString(R.string.voice_input_custom_model_path)
             isIconSpaceReserved = false
@@ -95,7 +172,9 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 }
                 true
             }
-        })
+        }
+        customModelPathPref = pathPref
+        screen.addPreference(pathPref)
 
         val keepAliveSwitch = SwitchPreferenceCompat(context).apply {
             key = VoiceInputPreferences.KeepModelReady
@@ -128,8 +207,61 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             isIconSpaceReserved = false
         })
 
+        screen.addPreference(EditTextPreference(context).apply {
+            key = VoiceInputPreferences.OpenAIEndpoint
+            title = context.getString(R.string.voice_input_openai_endpoint)
+            summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
+                if (preference.text.isNullOrBlank()) {
+                    context.getString(R.string.voice_input_openai_endpoint_default)
+                } else {
+                    preference.text
+                }
+            }
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                it.isSingleLine = true
+            }
+        })
+
         screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
         screen.addPreference(secretPreference(R.string.voice_input_google_key, VoiceInputPreferences.GoogleKey))
+        screen.addPreference(Preference(context).apply {
+            title = context.getString(R.string.voice_input_test_google_connection)
+            summary = context.getString(R.string.voice_input_test_google_connection_summary)
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                val key = VoiceInputPreferences.googleKey()
+                if (key.isBlank()) {
+                    Toast.makeText(context, R.string.voice_input_test_google_key_empty, Toast.LENGTH_SHORT).show()
+                    return@setOnPreferenceClickListener true
+                }
+                isEnabled = false
+                summary = getString(R.string.voice_input_test_google_testing)
+                lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching {
+                            VoiceTranscriptionClient.testGoogleConnection(key)
+                        }
+                    }
+                    isEnabled = true
+                    result.onSuccess {
+                        summary = getString(R.string.voice_input_test_google_success)
+                        Toast.makeText(context, R.string.voice_input_test_google_success, Toast.LENGTH_SHORT).show()
+                    }.onFailure { error ->
+                        val msg = error.message ?: error.toString()
+                        summary = getString(R.string.voice_input_test_google_failed, msg)
+                        Toast.makeText(
+                            context,
+                            getString(R.string.voice_input_test_google_failed, msg),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                true
+            }
+        })
         screen.addPreference(EditTextPreference(context).apply {
             key = VoiceInputPreferences.Hotwords
             title = context.getString(R.string.voice_input_hotwords)

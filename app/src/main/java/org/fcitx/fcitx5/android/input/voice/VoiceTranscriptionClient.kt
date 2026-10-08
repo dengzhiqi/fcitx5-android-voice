@@ -158,12 +158,28 @@ class VoiceTranscriptionClient {
             prompt,
             audio.length()
         )
-        val response = postJson(OpenAIEndpoint, key, body)
+        val endpoint = resolveOpenAIEndpoint(VoiceInputPreferences.openAIEndpoint())
+        val response = postJson(endpoint, key, body)
         Timber.d("OpenAI response: %s", response)
         val root = Json.parseToJsonElement(response).jsonObject
         val content = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject
             ?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull
         return content.orEmpty().trim()
+    }
+
+    internal fun resolveOpenAIEndpoint(customDomain: String): String {
+        val trimmed = customDomain.trim().removeSuffix("/")
+        if (trimmed.isEmpty()) return OpenAIEndpoint
+        val base = if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            "https://$trimmed"
+        } else {
+            trimmed
+        }
+        return when {
+            base.endsWith("/chat/completions") -> base
+            base.endsWith("/v1") -> "$base/chat/completions"
+            else -> "$base/v1/chat/completions"
+        }
     }
 
     internal fun transcriptionPrompt(
@@ -213,5 +229,37 @@ class VoiceTranscriptionClient {
         private const val OpenAIEndpoint = "https://api.openai.com/v1/chat/completions"
         private const val GoogleSpeechEndpoint = "https://speech.googleapis.com/v1/speech:recognize"
         private const val MaxContextChars = 200
+
+        fun testGoogleConnection(apiKey: String = VoiceInputPreferences.googleKey()): String {
+            require(apiKey.isNotBlank()) { "Google ASR API key is not configured" }
+            val silentPcm = ByteArray(3200)
+            val audioBase64 = Base64.encodeToString(silentPcm, Base64.NO_WRAP)
+            val body = buildJsonObject {
+                put("config", buildJsonObject {
+                    put("encoding", JsonPrimitive("LINEAR16"))
+                    put("sampleRateHertz", JsonPrimitive(16000))
+                    put("languageCode", JsonPrimitive("zh-CN"))
+                })
+                put("audio", buildJsonObject {
+                    put("content", JsonPrimitive(audioBase64))
+                })
+            }.toString()
+            val endpoint = "$GoogleSpeechEndpoint?key=$apiKey"
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 15_000
+                readTimeout = 15_000
+                setRequestProperty("Content-Type", "application/json")
+            }
+            connection.outputStream.use { it.write(body.toByteArray()) }
+            val status = connection.responseCode
+            val responseBody = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                throw IllegalStateException("HTTP $status: $responseBody")
+            }
+            return responseBody
+        }
     }
 }

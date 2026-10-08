@@ -10,14 +10,14 @@ upstream keyboard and input engines intact.
 3. Hold the space bar to record, release to transcribe and commit, or swipe up
    before releasing to cancel.
 
-The remote provider supports OpenAI `gpt-audio-1.5` and Google Cloud Speech-to-Text.
+The remote provider supports OpenAI `gpt-audio-1.5` (with configurable custom API domain/base URL for third-party compatible providers) and Google Cloud Speech-to-Text.
 Each request contains the WAV recording, up to 8,000 characters before the cursor (for OpenAI),
 and the configured hotwords.
 
-Local inference is enabled by default when a model is ready. You can specify a custom model
-directory (e.g. `/sdcard/Download/Qwen2.5-Omni-3B-MNN` or any MNN voice model containing `config.json`)
-in settings, or tap the local model entry to download the default 2.55 GiB input-only
-subset of `taobao-mnn/Qwen2.5-Omni-3B-MNN`, pinned to model revision
+Local inference is enabled by default when a model is ready. You can choose a model folder
+directly via system folder picker or specify a custom path (e.g. `/sdcard/Download/Qwen2.5-Omni-3B-MNN`
+or any MNN voice model containing `config.json`) in settings, or tap the local model entry to download
+the default 2.55 GiB input-only subset of `taobao-mnn/Qwen2.5-Omni-3B-MNN`, pinned to model revision
 `00dc2e9131a4bb325b43a47f4210dd6450116687`. MNN receives the original WAV in an
 `<audio>` prompt together with the same editor context and hotwords. If the local model
 is absent, the app falls back to the configured remote provider.

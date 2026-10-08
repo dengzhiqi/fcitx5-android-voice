@@ -66,4 +66,34 @@ class VoiceTranscriptionNormalizerTest {
         assertEquals("yue-Hant-HK", client.normalizeBcp47("yue"))
         assertEquals("fr-FR", client.normalizeBcp47("fr_FR"))
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun throwsWhenTestingGoogleConnectionWithEmptyKey() {
+        VoiceTranscriptionClient.testGoogleConnection("")
+    }
+
+    @Test
+    fun resolvesCustomOpenAIEndpoints() {
+        val client = VoiceTranscriptionClient()
+        assertEquals(
+            "https://api.openai.com/v1/chat/completions",
+            client.resolveOpenAIEndpoint("")
+        )
+        assertEquals(
+            "https://api.openai.com/v1/chat/completions",
+            client.resolveOpenAIEndpoint("https://api.openai.com")
+        )
+        assertEquals(
+            "https://api.deepseek.com/v1/chat/completions",
+            client.resolveOpenAIEndpoint("api.deepseek.com")
+        )
+        assertEquals(
+            "https://api.moonshot.cn/v1/chat/completions",
+            client.resolveOpenAIEndpoint("https://api.moonshot.cn/v1")
+        )
+        assertEquals(
+            "https://custom-proxy.internal/v1/chat/completions",
+            client.resolveOpenAIEndpoint("https://custom-proxy.internal/v1/chat/completions")
+        )
+    }
 }

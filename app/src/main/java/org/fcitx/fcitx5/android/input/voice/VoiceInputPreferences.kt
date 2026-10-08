@@ -13,6 +13,8 @@ object VoiceInputPreferences {
     const val RemoteProvider = "voice_input_remote_provider"
     const val ProviderOpenAI = "openai"
     const val ProviderGoogle = "google"
+    const val DefaultOpenAIEndpoint = "https://api.openai.com"
+    const val OpenAIEndpoint = "voice_input_openai_endpoint"
     const val OpenAIKey = "voice_input_openai_key"
     const val GoogleKey = "voice_input_google_key"
     const val Hotwords = "voice_input_hotwords"
@@ -30,7 +32,17 @@ object VoiceInputPreferences {
 
     fun customModelPath() = preferences.getString(CustomModelPath, "").orEmpty().trim()
 
+    fun setCustomModelPath(path: String) {
+        preferences.edit().putString(CustomModelPath, path.trim()).apply()
+    }
+
     fun remoteProvider() = preferences.getString(RemoteProvider, ProviderOpenAI).orEmpty().ifEmpty { ProviderOpenAI }
+
+    fun openAIEndpoint() = preferences.getString(OpenAIEndpoint, "").orEmpty().trim().ifEmpty { DefaultOpenAIEndpoint }
+
+    fun setOpenAIEndpoint(endpoint: String) {
+        preferences.edit().putString(OpenAIEndpoint, endpoint.trim()).apply()
+    }
 
     fun openAIKey() = preferences.getString(OpenAIKey, "").orEmpty().trim()
 
