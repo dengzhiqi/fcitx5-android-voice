@@ -10,7 +10,7 @@ upstream keyboard and input engines intact.
 3. Hold the space bar to record, release to transcribe and commit, or swipe up
    before releasing to cancel.
 
-The remote provider supports OpenAI `gpt-audio-1.5` (with configurable custom API domain/base URL for third-party compatible providers) and Google Cloud Speech-to-Text.
+The remote provider supports OpenAI `gpt-audio-1.5` (with configurable custom API domain/base URL and custom model name for third-party compatible providers) and Google Cloud Speech-to-Text.
 Each request contains the WAV recording, up to 8,000 characters before the cursor (for OpenAI),
 and the configured hotwords.
 

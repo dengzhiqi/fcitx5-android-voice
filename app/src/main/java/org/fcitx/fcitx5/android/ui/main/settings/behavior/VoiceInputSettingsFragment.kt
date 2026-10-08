@@ -218,6 +218,24 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             }
         })
 
+        screen.addPreference(EditTextPreference(context).apply {
+            key = VoiceInputPreferences.OpenAIModel
+            title = context.getString(R.string.voice_input_openai_model)
+            summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
+                if (preference.text.isNullOrBlank()) {
+                    context.getString(R.string.voice_input_openai_model_default)
+                } else {
+                    preference.text
+                }
+            }
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT
+                it.isSingleLine = true
+            }
+        })
+
         screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
         screen.addPreference(Preference(context).apply {
             title = context.getString(R.string.voice_input_test_openai_connection)
@@ -230,12 +248,13 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                     return@setOnPreferenceClickListener true
                 }
                 val domain = VoiceInputPreferences.openAIEndpoint()
+                val model = VoiceInputPreferences.openAIModel()
                 isEnabled = false
                 summary = getString(R.string.voice_input_test_openai_testing)
                 lifecycleScope.launch {
                     val result = withContext(Dispatchers.IO) {
                         runCatching {
-                            VoiceTranscriptionClient.testOpenAIConnection(key, domain)
+                            VoiceTranscriptionClient.testOpenAIConnection(key, domain, model)
                         }
                     }
                     isEnabled = true

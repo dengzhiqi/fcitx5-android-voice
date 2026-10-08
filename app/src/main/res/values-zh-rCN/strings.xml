@@ -225,6 +225,8 @@
     <string name="voice_input_provider_google">Google Cloud Speech-to-Text</string>
     <string name="voice_input_openai_endpoint">OpenAI API 自定义域名</string>
     <string name="voice_input_openai_endpoint_default">默认（https://api.openai.com）</string>
+    <string name="voice_input_openai_model">OpenAI 模型名称</string>
+    <string name="voice_input_openai_model_default">默认（gpt-audio-1.5）</string>
     <string name="voice_input_openai_key">OpenAI API 密钥</string>
     <string name="voice_input_test_openai_connection">测试 OpenAI API 连接</string>
     <string name="voice_input_test_openai_connection_summary">测试当前域名、API 密钥与网络连接状态</string>

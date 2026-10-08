@@ -130,10 +130,11 @@ class VoiceTranscriptionClient {
     ): String {
         val key = VoiceInputPreferences.openAIKey()
         require(key.isNotEmpty()) { "OpenAI API key is not configured" }
+        val model = VoiceInputPreferences.openAIModel()
         val prompt = transcriptionPrompt(precedingText, hotwords, targetLanguage)
         val audioBase64 = Base64.encodeToString(audio.readBytes(), Base64.NO_WRAP)
         val body = buildJsonObject {
-            put("model", JsonPrimitive("gpt-audio-1.5"))
+            put("model", JsonPrimitive(model))
             put("messages", buildJsonArray {
                 add(buildJsonObject {
                     put("role", JsonPrimitive("user"))
@@ -154,7 +155,8 @@ class VoiceTranscriptionClient {
             })
         }.toString()
         Timber.d(
-            "OpenAI request: model=gpt-audio-1.5 prompt=%s audioBytes=%d",
+            "OpenAI request: model=%s prompt=%s audioBytes=%d",
+            model,
             prompt,
             audio.length()
         )
@@ -264,14 +266,16 @@ class VoiceTranscriptionClient {
 
         fun testOpenAIConnection(
             apiKey: String,
-            customDomain: String = ""
+            customDomain: String = "",
+            customModel: String = ""
         ): String {
             require(apiKey.isNotBlank()) { "OpenAI API key is not configured" }
             val client = VoiceTranscriptionClient()
             val domain = customDomain.ifBlank { VoiceInputPreferences.openAIEndpoint() }
+            val modelName = customModel.ifBlank { VoiceInputPreferences.openAIModel() }
             val targetEndpoint = client.resolveOpenAIEndpoint(domain)
             val body = buildJsonObject {
-                put("model", JsonPrimitive("gpt-audio-1.5"))
+                put("model", JsonPrimitive(modelName))
                 put("messages", buildJsonArray {
                     add(buildJsonObject {
                         put("role", JsonPrimitive("user"))
@@ -297,7 +301,7 @@ class VoiceTranscriptionClient {
                 ?.bufferedReader()?.use { it.readText() }.orEmpty()
             if (status !in 200..299) {
                 if (status == 404 || responseBody.contains("model_not_found", ignoreCase = true) || responseBody.contains("does not exist", ignoreCase = true)) {
-                    return "Connected successfully, but model 'gpt-audio-1.5' not found on provider ($status)"
+                    return "Connected successfully, but model '$modelName' not found on provider ($status)"
                 }
                 throw IllegalStateException("HTTP $status: $responseBody")
             }

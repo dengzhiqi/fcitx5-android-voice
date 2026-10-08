@@ -15,6 +15,8 @@ object VoiceInputPreferences {
     const val ProviderGoogle = "google"
     const val DefaultOpenAIEndpoint = "https://api.openai.com"
     const val OpenAIEndpoint = "voice_input_openai_endpoint"
+    const val DefaultOpenAIModel = "gpt-audio-1.5"
+    const val OpenAIModel = "voice_input_openai_model"
     const val OpenAIKey = "voice_input_openai_key"
     const val GoogleKey = "voice_input_google_key"
     const val Hotwords = "voice_input_hotwords"
@@ -42,6 +44,12 @@ object VoiceInputPreferences {
 
     fun setOpenAIEndpoint(endpoint: String) {
         preferences.edit().putString(OpenAIEndpoint, endpoint.trim()).apply()
+    }
+
+    fun openAIModel() = preferences.getString(OpenAIModel, "").orEmpty().trim().ifEmpty { DefaultOpenAIModel }
+
+    fun setOpenAIModel(model: String) {
+        preferences.edit().putString(OpenAIModel, model.trim()).apply()
     }
 
     fun openAIKey() = preferences.getString(OpenAIKey, "").orEmpty().trim()
