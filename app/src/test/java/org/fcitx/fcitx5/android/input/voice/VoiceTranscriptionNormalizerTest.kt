@@ -53,4 +53,17 @@ class VoiceTranscriptionNormalizerTest {
         assertEquals("hello", VoiceTranscriptionNormalizer.preview("the uploaded audio is \"hello"))
         assertEquals("你好", VoiceTranscriptionNormalizer.preview("识别结果：你好"))
     }
+
+    @Test
+    fun normalizesLanguageToBcp47() {
+        val client = VoiceTranscriptionClient()
+        assertEquals("zh-CN", client.normalizeBcp47("zh_CN"))
+        assertEquals("zh-CN", client.normalizeBcp47("zh"))
+        assertEquals("en-US", client.normalizeBcp47("en_US"))
+        assertEquals("en-US", client.normalizeBcp47("en"))
+        assertEquals("ja-JP", client.normalizeBcp47("ja"))
+        assertEquals("ko-KR", client.normalizeBcp47("ko"))
+        assertEquals("yue-Hant-HK", client.normalizeBcp47("yue"))
+        assertEquals("fr-FR", client.normalizeBcp47("fr_FR"))
+    }
 }

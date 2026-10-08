@@ -237,8 +237,14 @@ class VoiceInputController(
 
     private fun missingRemoteKeyMessage(): Int? {
         if (VoiceInputPreferences.isAvailable()) return null
-        return R.string.voice_input_missing_openai_key.takeIf {
-            VoiceInputPreferences.openAIKey().isEmpty()
+        return if (VoiceInputPreferences.remoteProvider() == VoiceInputPreferences.ProviderGoogle) {
+            R.string.voice_input_missing_google_key.takeIf {
+                VoiceInputPreferences.googleKey().isEmpty()
+            }
+        } else {
+            R.string.voice_input_missing_openai_key.takeIf {
+                VoiceInputPreferences.openAIKey().isEmpty()
+            }
         }
     }
 

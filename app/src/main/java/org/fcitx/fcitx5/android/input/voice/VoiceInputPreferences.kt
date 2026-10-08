@@ -9,7 +9,12 @@ import org.fcitx.fcitx5.android.utils.appContext
 object VoiceInputPreferences {
     const val PreferLocal = "voice_input_prefer_local"
     const val KeepModelReady = "voice_input_keep_model_ready"
+    const val CustomModelPath = "voice_input_custom_model_path"
+    const val RemoteProvider = "voice_input_remote_provider"
+    const val ProviderOpenAI = "openai"
+    const val ProviderGoogle = "google"
     const val OpenAIKey = "voice_input_openai_key"
+    const val GoogleKey = "voice_input_google_key"
     const val Hotwords = "voice_input_hotwords"
 
     private val preferences
@@ -23,10 +28,18 @@ object VoiceInputPreferences {
         preferences.edit().putBoolean(KeepModelReady, value).apply()
     }
 
+    fun customModelPath() = preferences.getString(CustomModelPath, "").orEmpty().trim()
+
+    fun remoteProvider() = preferences.getString(RemoteProvider, ProviderOpenAI).orEmpty().ifEmpty { ProviderOpenAI }
+
     fun openAIKey() = preferences.getString(OpenAIKey, "").orEmpty().trim()
 
+    fun googleKey() = preferences.getString(GoogleKey, "").orEmpty().trim()
+
+    fun remoteKeyConfigured() = if (remoteProvider() == ProviderGoogle) googleKey().isNotEmpty() else openAIKey().isNotEmpty()
+
     fun isAvailable() =
-        (preferLocal() && LocalMnnEngine.isReady()) || openAIKey().isNotEmpty()
+        (preferLocal() && LocalMnnEngine.isReady()) || remoteKeyConfigured()
 
     fun hotwords(): List<String> = preferences.getString(Hotwords, "").orEmpty()
         .split(',', '\n')

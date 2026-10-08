@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.text.InputType
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
@@ -21,6 +22,9 @@ import org.fcitx.fcitx5.android.input.voice.VoiceInputPreferences
 import org.fcitx.fcitx5.android.ui.common.PaddingPreferenceFragment
 
 class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
+    private var localModelPref: Preference? = null
+    private var keepAlivePref: SwitchPreferenceCompat? = null
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         preferenceScreen = preferenceManager.createPreferenceScreen(requireContext()).also { screen ->
             createPreferences(screen)
@@ -35,13 +39,17 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             summary = context.getString(R.string.voice_input_prefer_local_summary)
             setDefaultValue(true)
             isIconSpaceReserved = false
+            setOnPreferenceChangeListener { _, _ ->
+                updateKeepAliveState()
+                true
+            }
         })
-        screen.addPreference(Preference(context).apply {
+        val modelPref = Preference(context).apply {
             title = context.getString(R.string.voice_input_local_model)
             summary = localModelSummary()
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
-                if (!LocalVoiceModel.isReady() && isEnabled) {
+                if (!LocalVoiceModel.isReady() && isEnabled && !LocalVoiceModel.isCustom()) {
                     isEnabled = false
                     lifecycleScope.launch {
                         runCatching {
@@ -55,6 +63,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                             }
                         }.onSuccess {
                             summary = localModelSummary()
+                            updateKeepAliveState()
                         }.onFailure {
                             summary = getString(R.string.voice_input_model_download_failed, it.message)
                         }
@@ -63,26 +72,64 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 }
                 true
             }
+        }
+        localModelPref = modelPref
+        screen.addPreference(modelPref)
+
+        screen.addPreference(EditTextPreference(context).apply {
+            key = VoiceInputPreferences.CustomModelPath
+            title = context.getString(R.string.voice_input_custom_model_path)
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+            summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
+                if (preference.text.isNullOrBlank()) {
+                    context.getString(R.string.voice_input_custom_model_path_default)
+                } else {
+                    preference.text
+                }
+            }
+            setOnPreferenceChangeListener { _, _ ->
+                view?.post {
+                    localModelPref?.summary = localModelSummary()
+                    updateKeepAliveState()
+                }
+                true
+            }
         })
-        val keepAliveAvailable = LocalVoiceModel.isReady() && VoiceInputPreferences.preferLocal()
-        screen.addPreference(SwitchPreferenceCompat(context).apply {
+
+        val keepAliveSwitch = SwitchPreferenceCompat(context).apply {
             key = VoiceInputPreferences.KeepModelReady
             title = context.getString(R.string.voice_input_keep_model_ready)
-            summary = if (keepAliveAvailable) {
-                context.getString(R.string.voice_input_keep_model_ready_summary)
-            } else {
-                context.getString(R.string.voice_input_keep_model_ready_unavailable)
-            }
             setDefaultValue(false)
-            isEnabled = keepAliveAvailable
             isIconSpaceReserved = false
             setOnPreferenceChangeListener { _, newValue ->
                 if (newValue == true) ModelKeepAliveService.start(context)
                 else ModelKeepAliveService.stop(context)
                 true
             }
+        }
+        keepAlivePref = keepAliveSwitch
+        screen.addPreference(keepAliveSwitch)
+        updateKeepAliveState()
+
+        screen.addPreference(ListPreference(context).apply {
+            key = VoiceInputPreferences.RemoteProvider
+            title = context.getString(R.string.voice_input_remote_provider)
+            entries = arrayOf(
+                context.getString(R.string.voice_input_provider_openai),
+                context.getString(R.string.voice_input_provider_google)
+            )
+            entryValues = arrayOf(
+                VoiceInputPreferences.ProviderOpenAI,
+                VoiceInputPreferences.ProviderGoogle
+            )
+            setDefaultValue(VoiceInputPreferences.ProviderOpenAI)
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            isIconSpaceReserved = false
         })
+
         screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
+        screen.addPreference(secretPreference(R.string.voice_input_google_key, VoiceInputPreferences.GoogleKey))
         screen.addPreference(EditTextPreference(context).apply {
             key = VoiceInputPreferences.Hotwords
             title = context.getString(R.string.voice_input_hotwords)
@@ -96,10 +143,33 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
         })
     }
 
-    private fun localModelSummary() = getString(
-        if (LocalVoiceModel.isReady()) R.string.voice_input_model_ready
-        else R.string.voice_input_model_download
-    )
+    private fun updateKeepAliveState() {
+        val keepAliveAvailable = LocalVoiceModel.isReady() && VoiceInputPreferences.preferLocal()
+        keepAlivePref?.apply {
+            isEnabled = keepAliveAvailable
+            summary = if (keepAliveAvailable) {
+                context.getString(R.string.voice_input_keep_model_ready_summary)
+            } else {
+                context.getString(R.string.voice_input_keep_model_ready_unavailable)
+            }
+        }
+    }
+
+    private fun localModelSummary(): String {
+        return if (LocalVoiceModel.isReady()) {
+            if (LocalVoiceModel.isCustom()) {
+                getString(R.string.voice_input_custom_model_ready, LocalVoiceModel.directory().absolutePath)
+            } else {
+                getString(R.string.voice_input_model_ready)
+            }
+        } else {
+            if (LocalVoiceModel.isCustom()) {
+                getString(R.string.voice_input_custom_model_not_found, LocalVoiceModel.directory().absolutePath)
+            } else {
+                getString(R.string.voice_input_model_download)
+            }
+        }
+    }
 
     private fun secretPreference(title: Int, keyValue: String) =
         EditTextPreference(requireContext()).apply {

@@ -43,7 +43,83 @@ class VoiceTranscriptionClient {
             return LocalMnnEngine.transcribe(audio, targetLanguage, onPartial)
         }
         val precedingText = context + alreadyInput
-        return transcribeWithOpenAI(audio, precedingText, hotwords, targetLanguage)
+        return if (VoiceInputPreferences.remoteProvider() == VoiceInputPreferences.ProviderGoogle) {
+            transcribeWithGoogle(audio, hotwords, targetLanguage)
+        } else {
+            transcribeWithOpenAI(audio, precedingText, hotwords, targetLanguage)
+        }
+    }
+
+    private fun transcribeWithGoogle(
+        audio: File,
+        hotwords: List<String>,
+        targetLanguage: String
+    ): String {
+        val key = VoiceInputPreferences.googleKey()
+        require(key.isNotEmpty()) { "Google ASR API key is not configured" }
+        val bcp47Language = normalizeBcp47(targetLanguage)
+        val audioBytes = audio.readBytes()
+        val rawAudio = if (audioBytes.size > 44 &&
+            audioBytes[0] == 'R'.code.toByte() &&
+            audioBytes[1] == 'I'.code.toByte() &&
+            audioBytes[2] == 'F'.code.toByte() &&
+            audioBytes[3] == 'F'.code.toByte()
+        ) {
+            audioBytes.copyOfRange(44, audioBytes.size)
+        } else {
+            audioBytes
+        }
+        val audioBase64 = Base64.encodeToString(rawAudio, Base64.NO_WRAP)
+        val body = buildJsonObject {
+            put("config", buildJsonObject {
+                put("encoding", JsonPrimitive("LINEAR16"))
+                put("sampleRateHertz", JsonPrimitive(16000))
+                put("languageCode", JsonPrimitive(bcp47Language))
+                put("enableAutomaticPunctuation", JsonPrimitive(true))
+                if (hotwords.isNotEmpty()) {
+                    put("speechContexts", buildJsonArray {
+                        add(buildJsonObject {
+                            put("phrases", buildJsonArray {
+                                hotwords.forEach { add(JsonPrimitive(it)) }
+                            })
+                        })
+                    })
+                }
+            })
+            put("audio", buildJsonObject {
+                put("content", JsonPrimitive(audioBase64))
+            })
+        }.toString()
+
+        Timber.d(
+            "Google ASR request: language=%s hotwords=%s audioBytes=%d",
+            bcp47Language,
+            hotwords,
+            audio.length()
+        )
+        val endpoint = "$GoogleSpeechEndpoint?key=$key"
+        val response = postJson(endpoint, "", body)
+        Timber.d("Google ASR response: %s", response)
+        val root = Json.parseToJsonElement(response).jsonObject
+        val results = root["results"]?.jsonArray
+        val text = results?.joinToString("") { result ->
+            result.jsonObject["alternatives"]?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("transcript")?.jsonPrimitive?.contentOrNull.orEmpty()
+        }.orEmpty().trim()
+        return text
+    }
+
+    internal fun normalizeBcp47(lang: String): String {
+        val trimmed = lang.trim().replace('_', '-')
+        return when {
+            trimmed.startsWith("zh", ignoreCase = true) -> "zh-CN"
+            trimmed.startsWith("en", ignoreCase = true) -> "en-US"
+            trimmed.startsWith("ja", ignoreCase = true) -> "ja-JP"
+            trimmed.startsWith("ko", ignoreCase = true) -> "ko-KR"
+            trimmed.startsWith("yue", ignoreCase = true) -> "yue-Hant-HK"
+            trimmed.isNotEmpty() -> trimmed
+            else -> "zh-CN"
+        }
     }
 
     private fun transcribeWithOpenAI(
@@ -118,7 +194,9 @@ class VoiceTranscriptionClient {
             doOutput = true
             connectTimeout = 30_000
             readTimeout = 90_000
-            setRequestProperty("Authorization", "Bearer $key")
+            if (key.isNotEmpty()) {
+                setRequestProperty("Authorization", "Bearer $key")
+            }
         }
 
     private fun readResponse(connection: HttpURLConnection): String {
@@ -133,6 +211,7 @@ class VoiceTranscriptionClient {
 
     companion object {
         private const val OpenAIEndpoint = "https://api.openai.com/v1/chat/completions"
+        private const val GoogleSpeechEndpoint = "https://speech.googleapis.com/v1/speech:recognize"
         private const val MaxContextChars = 200
     }
 }

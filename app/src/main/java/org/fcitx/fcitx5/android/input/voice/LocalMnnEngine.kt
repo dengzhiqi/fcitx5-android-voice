@@ -131,15 +131,33 @@ object LocalMnnEngine {
 }
 
 object LocalVoiceModel {
-    private val directory: File
+    private val defaultDirectory: File
         get() = org.fcitx.fcitx5.android.utils.appContext.filesDir
             .resolve("models/Qwen2.5-Omni-3B-MNN")
 
-    fun configFile() = directory.resolve("config.json")
+    fun isCustom(): Boolean = VoiceInputPreferences.customModelPath().isNotEmpty()
 
-    fun isReady() = Files.all { directory.resolve(it.name).length() == it.size }
+    fun directory(): File {
+        val custom = VoiceInputPreferences.customModelPath()
+        if (custom.isNotEmpty()) {
+            return File(custom)
+        }
+        return defaultDirectory
+    }
 
-    fun directory() = directory
+    fun configFile(): File = directory().resolve("config.json")
+
+    fun isReady(): Boolean {
+        val dir = directory()
+        if (!dir.exists() || !dir.isDirectory) return false
+        val cfg = configFile()
+        if (!cfg.isFile || cfg.length() <= 0) return false
+        if (isCustom()) {
+            // 自定义模型：只要 config.json 存在且非空即视为就绪
+            return true
+        }
+        return Files.all { dir.resolve(it.name).length() == it.size }
+    }
 
     data class ModelFile(val name: String, val size: Long)
 
