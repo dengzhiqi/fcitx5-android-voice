@@ -78,6 +78,7 @@ ksp {
 
 dependencies {
     implementation(files("libs/sherpa-onnx-1.13.8.aar"))
+    implementation("androidx.documentfile:documentfile:1.0.1")
     ksp(project(":codegen"))
     implementation(project(":lib:fcitx5"))
     implementation(project(":lib:fcitx5-lua"))

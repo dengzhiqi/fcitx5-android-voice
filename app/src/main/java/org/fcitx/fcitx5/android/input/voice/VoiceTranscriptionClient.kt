@@ -457,7 +457,19 @@ class VoiceTranscriptionClient {
             } else if (LocalMnnEngine.isReady()) {
                 return "本地 MNN-LLM 引擎已就绪"
             } else {
-                throw IllegalStateException("未检测到就绪的本地语音模型，请确认模型文件是否完整")
+                val dir = LocalVoiceModel.directory()
+                val files = runCatching { dir.listFiles() }.getOrNull()
+                val fileSummary = files?.joinToString { "${it.name} (${it.length()} 字节)" }
+                    ?: "无法读取目录文件列表（通常为未授予所有文件访问权限）"
+                val diagnostics = buildString {
+                    appendLine("未检测到就绪的本地离线模型。")
+                    appendLine("当前探测路径：${dir.absolutePath}")
+                    appendLine("目录是否存在：${dir.exists()}")
+                    appendLine("目录是否可读：${dir.canRead()}")
+                    appendLine("目录下检测到的文件：$fileSummary")
+                    append("请确认目录中包含 model.int8.onnx (或 model.onnx) 及 tokens.txt。")
+                }
+                throw IllegalStateException(diagnostics)
             }
         }
     }
