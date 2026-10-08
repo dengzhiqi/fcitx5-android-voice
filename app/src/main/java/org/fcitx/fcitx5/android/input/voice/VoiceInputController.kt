@@ -61,10 +61,17 @@ class VoiceInputController(
             toast(R.string.voice_input_missing_permission)
             return
         }
-        if (VoiceInputPreferences.preferLocal() && LocalMnnEngine.isReady()) {
-            scope.launch(Dispatchers.IO) {
-                runCatching(LocalMnnEngine::prewarm)
-                    .onFailure { Timber.e(it, "MNN prewarm failed") }
+        if (VoiceInputPreferences.preferLocal()) {
+            if (LocalSherpaEngine.isReady()) {
+                scope.launch(Dispatchers.IO) {
+                    runCatching(LocalSherpaEngine::prewarm)
+                        .onFailure { Timber.e(it, "Sherpa prewarm failed") }
+                }
+            } else if (LocalMnnEngine.isReady()) {
+                scope.launch(Dispatchers.IO) {
+                    runCatching(LocalMnnEngine::prewarm)
+                        .onFailure { Timber.e(it, "MNN prewarm failed") }
+                }
             }
         }
         if (missingRemoteKeyMessage() != null) return

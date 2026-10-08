@@ -34,7 +34,7 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
         return pref
     }
 
-    val keyBorder = switch(R.string.key_border, "key_border", false)
+    val keyBorder = switch(R.string.key_border, "key_border", true)
 
     val keyBorderStroke = switch(
         R.string.key_border_stroke, "key_border_stroke", false,
@@ -100,7 +100,7 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     val punctuationPosition = enumList(
         R.string.punctuation_position,
         "punctuation_position",
-        PunctuationPosition.Bottom
+        PunctuationPosition.TopRight
     )
 
     enum class NavbarBackground(override val stringRes: Int) : ManagedPreferenceEnum {

@@ -59,7 +59,7 @@ object VoiceInputPreferences {
     fun remoteKeyConfigured() = if (remoteProvider() == ProviderGoogle) googleKey().isNotEmpty() else openAIKey().isNotEmpty()
 
     fun isAvailable() =
-        (preferLocal() && LocalMnnEngine.isReady()) || remoteKeyConfigured()
+        (preferLocal() && (LocalSherpaEngine.isReady() || LocalMnnEngine.isReady())) || remoteKeyConfigured()
 
     fun hotwords(): List<String> = preferences.getString(Hotwords, "").orEmpty()
         .split(',', '\n')
