@@ -14,11 +14,14 @@ object LocalVoiceModelDownloader {
     private const val BaseUrl =
         "https://huggingface.co/taobao-mnn/Qwen2.5-Omni-3B-MNN/resolve/00dc2e9131a4bb325b43a47f4210dd6450116687"
 
-    fun download(onProgress: (downloaded: Long, total: Long) -> Unit) {
+    fun download(
+        targetDir: File = LocalVoiceModel.directory(),
+        onProgress: (downloaded: Long, total: Long) -> Unit
+    ) {
         val restoreKeepAlive = VoiceInputPreferences.keepModelReady()
         if (restoreKeepAlive) ModelKeepAliveService.suspendForModelUpdate(appContext)
         try {
-            downloadModel(onProgress)
+            downloadModel(targetDir, onProgress)
         } finally {
             if (restoreKeepAlive) {
                 VoiceInputPreferences.setKeepModelReady(true)
@@ -27,8 +30,11 @@ object LocalVoiceModelDownloader {
         }
     }
 
-    private fun downloadModel(onProgress: (downloaded: Long, total: Long) -> Unit) {
-        val directory = LocalVoiceModel.directory().also(File::mkdirs)
+    private fun downloadModel(
+        directory: File,
+        onProgress: (downloaded: Long, total: Long) -> Unit
+    ) {
+        directory.mkdirs()
         val total = LocalVoiceModel.Files.sumOf { it.size }
         LocalVoiceModel.Files.forEach { item ->
             val target = directory.resolve(item.name)

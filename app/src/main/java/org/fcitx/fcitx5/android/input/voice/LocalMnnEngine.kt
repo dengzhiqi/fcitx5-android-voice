@@ -131,7 +131,7 @@ object LocalMnnEngine {
 }
 
 object LocalVoiceModel {
-    private val defaultDirectory: File
+    val defaultDirectory: File
         get() = org.fcitx.fcitx5.android.utils.appContext.filesDir
             .resolve("models/Qwen2.5-Omni-3B-MNN")
 

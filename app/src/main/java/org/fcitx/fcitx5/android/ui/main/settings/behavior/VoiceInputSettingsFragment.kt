@@ -10,6 +10,7 @@ import android.provider.DocumentsContract
 import android.text.InputType
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
@@ -32,31 +33,42 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
     private var localModelPref: Preference? = null
     private var customModelPathPref: EditTextPreference? = null
     private var keepAlivePref: SwitchPreferenceCompat? = null
+    private var downloadAfterFolderSelected = false
 
     private val chooseDirectoryLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri == null) return@registerForActivityResult
+            if (uri == null) {
+                downloadAfterFolderSelected = false
+                return@registerForActivityResult
+            }
             val path = uriToAbsolutePath(uri)
             if (!path.isNullOrBlank()) {
                 VoiceInputPreferences.setCustomModelPath(path)
                 customModelPathPref?.text = path
                 localModelPref?.summary = localModelSummary()
                 updateKeepAliveState()
-                val configFile = File(path, "config.json")
-                if (configFile.exists() && configFile.length() > 0) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.voice_input_custom_model_ready, path),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                val targetDir = File(path)
+                if (downloadAfterFolderSelected) {
+                    downloadAfterFolderSelected = false
+                    startDownloadModel(targetDir)
                 } else {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.voice_input_custom_model_not_found, path),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    val configFile = File(path, "config.json")
+                    if (configFile.exists() && configFile.length() > 0) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.voice_input_custom_model_ready, path),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.voice_input_custom_model_not_found, path),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             } else {
+                downloadAfterFolderSelected = false
                 Toast.makeText(
                     requireContext(),
                     R.string.voice_input_model_path_resolve_failed,
@@ -116,27 +128,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             summary = localModelSummary()
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
-                if (!LocalVoiceModel.isReady() && isEnabled && !LocalVoiceModel.isCustom()) {
-                    isEnabled = false
-                    lifecycleScope.launch {
-                        runCatching {
-                            withContext(Dispatchers.IO) {
-                                LocalVoiceModelDownloader.download { downloaded, total ->
-                                    val percent = downloaded * 100 / total
-                                    lifecycleScope.launch {
-                                        summary = getString(R.string.voice_input_model_downloading, percent)
-                                    }
-                                }
-                            }
-                        }.onSuccess {
-                            summary = localModelSummary()
-                            updateKeepAliveState()
-                        }.onFailure {
-                            summary = getString(R.string.voice_input_model_download_failed, it.message)
-                        }
-                        isEnabled = true
-                    }
-                }
+                promptDownloadModel()
                 true
             }
         }
@@ -148,6 +140,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             summary = context.getString(R.string.voice_input_choose_model_directory_summary)
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
+                downloadAfterFolderSelected = false
                 chooseDirectoryLauncher.launch(null)
                 true
             }
@@ -273,6 +266,98 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 it.isSingleLine = false
             }
         })
+    }
+
+    private fun promptDownloadModel() {
+        if (LocalVoiceModel.isReady()) {
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.voice_input_local_model)
+                .setMessage(getString(R.string.voice_input_model_already_ready_confirm, LocalVoiceModel.directory().absolutePath))
+                .setPositiveButton(R.string.voice_input_redownload) { _, _ ->
+                    showDownloadLocationDialog()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        } else {
+            showDownloadLocationDialog()
+        }
+    }
+
+    private fun showDownloadLocationDialog() {
+        val context = requireContext()
+        val customPath = VoiceInputPreferences.customModelPath()
+        val defaultDir = LocalVoiceModel.defaultDirectory
+
+        val options: Array<String>
+        val actions: List<() -> Unit>
+
+        if (customPath.isNotEmpty()) {
+            val customDir = File(customPath)
+            options = arrayOf(
+                getString(R.string.voice_input_download_to_custom, customPath),
+                getString(R.string.voice_input_download_to_default, defaultDir.absolutePath)
+            )
+            actions = listOf(
+                { startDownloadModel(customDir) },
+                {
+                    VoiceInputPreferences.setCustomModelPath("")
+                    customModelPathPref?.text = ""
+                    localModelPref?.summary = localModelSummary()
+                    updateKeepAliveState()
+                    startDownloadModel(defaultDir)
+                }
+            )
+        } else {
+            options = arrayOf(
+                getString(R.string.voice_input_download_to_default, defaultDir.absolutePath),
+                getString(R.string.voice_input_download_choose_folder)
+            )
+            actions = listOf(
+                { startDownloadModel(defaultDir) },
+                {
+                    downloadAfterFolderSelected = true
+                    chooseDirectoryLauncher.launch(null)
+                }
+            )
+        }
+
+        AlertDialog.Builder(context)
+            .setTitle(R.string.voice_input_download_target_title)
+            .setItems(options) { _, which ->
+                actions.getOrNull(which)?.invoke()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun startDownloadModel(targetDir: File) {
+        val modelPref = localModelPref ?: return
+        if (!modelPref.isEnabled) return
+        modelPref.isEnabled = false
+        lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    LocalVoiceModelDownloader.download(targetDir) { downloaded, total ->
+                        val percent = downloaded * 100 / total
+                        lifecycleScope.launch {
+                            modelPref.summary = getString(R.string.voice_input_model_downloading, percent)
+                        }
+                    }
+                }
+            }.onSuccess {
+                modelPref.summary = localModelSummary()
+                updateKeepAliveState()
+                Toast.makeText(requireContext(), R.string.voice_input_model_ready, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                modelPref.summary = getString(R.string.voice_input_model_download_failed, it.message)
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.voice_input_model_download_failed, it.message),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            modelPref.isEnabled = true
+        }
     }
 
     private fun updateKeepAliveState() {

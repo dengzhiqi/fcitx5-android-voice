@@ -207,6 +207,12 @@
     <string name="voice_input_model_downloading">Downloading local model… %1$d%%</string>
     <string name="voice_input_model_ready">Installed and ready</string>
     <string name="voice_input_model_download_failed">Download failed: %1$s (tap to resume)</string>
+    <string name="voice_input_download_target_title">Select model download location</string>
+    <string name="voice_input_download_to_custom">Download to custom path (%1$s)</string>
+    <string name="voice_input_download_to_default">Download to default internal path (%1$s)</string>
+    <string name="voice_input_download_choose_folder">Choose folder on device and download</string>
+    <string name="voice_input_model_already_ready_confirm">The local model is already installed and ready at %1$s. Do you want to download again?</string>
+    <string name="voice_input_redownload">Redownload</string>
     <string name="voice_input_choose_model_directory">Choose model folder</string>
     <string name="voice_input_choose_model_directory_summary">Select a model directory from device storage via file picker</string>
     <string name="voice_input_model_path_resolve_failed">Failed to resolve directory path from selection</string>

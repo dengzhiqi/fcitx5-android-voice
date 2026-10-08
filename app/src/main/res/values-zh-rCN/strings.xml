@@ -207,6 +207,12 @@
     <string name="voice_input_model_downloading">正在下载本地模型… %1$d%%</string>
     <string name="voice_input_model_ready">已安装，可以使用</string>
     <string name="voice_input_model_download_failed">下载失败：%1$s（点按继续）</string>
+    <string name="voice_input_download_target_title">选择模型下载位置</string>
+    <string name="voice_input_download_to_custom">下载到当前自定义路径（%1$s）</string>
+    <string name="voice_input_download_to_default">下载到默认内置路径（%1$s）</string>
+    <string name="voice_input_download_choose_folder">选择手机目录并下载</string>
+    <string name="voice_input_model_already_ready_confirm">本地模型已安装就绪（位于：%1$s）。是否重新下载？</string>
+    <string name="voice_input_redownload">重新下载</string>
     <string name="voice_input_choose_model_directory">选择模型目录</string>
     <string name="voice_input_choose_model_directory_summary">通过系统文件选择框选取手机上的模型文件夹</string>
     <string name="voice_input_model_path_resolve_failed">无法解析所选目录的实际路径</string>
