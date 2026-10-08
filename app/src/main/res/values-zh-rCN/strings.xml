@@ -200,10 +200,10 @@
     <string name="space_long_press_behavior">空格键长按行为</string>
     <string name="space_behavior_voice_input">语音输入</string>
     <string name="voice_input_settings">语音输入</string>
-    <string name="voice_input_prefer_local">优先使用本地 MNN 引擎</string>
-    <string name="voice_input_prefer_local_summary">已安装模型时使用 Qwen2.5-Omni-3B-MNN，否则使用远端引擎</string>
-    <string name="voice_input_local_model">Qwen2.5-Omni-3B-MNN 模型</string>
-    <string name="voice_input_model_download">点按下载 2.55 GiB（建议使用 Wi-Fi）</string>
+    <string name="voice_input_prefer_local">优先使用本地离线引擎</string>
+    <string name="voice_input_prefer_local_summary">已安装模型时优先使用本地离线模型（支持 SenseVoiceSmall / Whisper 等），否则使用远端引擎</string>
+    <string name="voice_input_local_model">本地离线语音模型</string>
+    <string name="voice_input_model_download">未检测到本地模型（点按下载或设置自定义目录）</string>
     <string name="voice_input_model_downloading">正在下载本地模型… %1$d%%</string>
     <string name="voice_input_model_ready">已安装，可以使用</string>
     <string name="voice_input_model_download_failed">下载失败：%1$s（点按继续）</string>

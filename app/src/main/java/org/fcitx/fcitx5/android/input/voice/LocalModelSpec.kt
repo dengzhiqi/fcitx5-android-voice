@@ -3,6 +3,8 @@
  */
 package org.fcitx.fcitx5.android.input.voice
 
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
 sealed interface LocalModelSpec {
@@ -41,9 +43,21 @@ sealed interface LocalModelSpec {
 
             val allFiles = dir.listFiles()?.filter { it.isFile } ?: return null
             val onnxFiles = allFiles.filter { it.name.endsWith(".onnx", ignoreCase = true) }
-            val tokensFile = allFiles.firstOrNull {
+
+            // 优先查找现有 tokens.txt，若只有 tokens.json 则自动转换为 tokens.txt
+            var tokensFile = allFiles.firstOrNull {
                 it.name.equals("tokens.txt", ignoreCase = true) ||
                     it.name.startsWith("tokens", ignoreCase = true) && it.name.endsWith(".txt", ignoreCase = true)
+            }
+
+            if (tokensFile == null) {
+                val tokensJson = allFiles.firstOrNull {
+                    it.name.equals("tokens.json", ignoreCase = true) ||
+                        it.name.startsWith("tokens", ignoreCase = true) && it.name.endsWith(".json", ignoreCase = true)
+                }
+                if (tokensJson != null) {
+                    tokensFile = convertTokensJsonToTxt(dir, tokensJson)
+                }
             }
 
             if (tokensFile != null && onnxFiles.isNotEmpty()) {
@@ -67,14 +81,14 @@ sealed interface LocalModelSpec {
                     return SherpaSpec.Paraformer(paraformerFile, tokensFile)
                 }
 
-                // 4. 检查 SenseVoice: 名字包含 sense-voice，或者 model.int8.onnx / model.onnx
+                // 4. 检查 SenseVoice: 名字包含 sense-voice / sensevoice / model_quant / model.int8 / model.onnx
                 val senseVoiceFile = onnxFiles.firstOrNull {
                     it.name.contains("sense-voice", ignoreCase = true) ||
-                        it.name.contains("sensevoice", ignoreCase = true)
-                } ?: onnxFiles.firstOrNull {
-                    it.name.equals("model.int8.onnx", ignoreCase = true) ||
+                        it.name.contains("sensevoice", ignoreCase = true) ||
+                        it.name.contains("model_quant", ignoreCase = true) ||
+                        it.name.equals("model.int8.onnx", ignoreCase = true) ||
                         it.name.equals("model.onnx", ignoreCase = true)
-                } ?: onnxFiles.firstOrNull() // 只有一个 onnx 且配有 tokens.txt 时默认尝试以 SenseVoice 驱动
+                } ?: onnxFiles.firstOrNull() // 只有一个 onnx 且配有 tokens 时默认按 SenseVoice 驱动
 
                 if (senseVoiceFile != null) {
                     return SherpaSpec.SenseVoice(senseVoiceFile, tokensFile)
@@ -89,6 +103,30 @@ sealed interface LocalModelSpec {
             }
 
             return null
+        }
+
+        internal fun convertTokensJsonToTxt(dir: File, jsonFile: File): File? {
+            return runCatching {
+                val targetTxt = dir.resolve("tokens.txt")
+                if (targetTxt.exists() && targetTxt.length() > 0) {
+                    return targetTxt
+                }
+                val outputFile = runCatching {
+                    if (targetTxt.createNewFile() || targetTxt.canWrite()) targetTxt else null
+                }.getOrNull() ?: runCatching {
+                    org.fcitx.fcitx5.android.utils.appContext.cacheDir.resolve("${dir.name}_tokens.txt")
+                }.getOrNull() ?: File.createTempFile("converted_tokens_", ".txt")
+
+                val jsonText = jsonFile.readText()
+                val jsonArray = kotlinx.serialization.json.Json.parseToJsonElement(jsonText).jsonArray
+                outputFile.bufferedWriter().use { writer ->
+                    jsonArray.forEachIndexed { index, element ->
+                        val token = element.jsonPrimitive.content
+                        writer.write("$token $index\n")
+                    }
+                }
+                outputFile
+            }.getOrNull()
         }
     }
 }

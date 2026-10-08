@@ -137,4 +137,23 @@ class VoiceTranscriptionNormalizerTest {
             tempDir.deleteRecursively()
         }
     }
+
+    @Test
+    fun detectsSherpaSenseVoiceWithModelQuantAndTokensJson() {
+        val tempDir = java.nio.file.Files.createTempDirectory("test_sensevoice_json").toFile()
+        try {
+            tempDir.resolve("tokens.json").writeText("[\"<unk>\", \"<s>\", \"你好\"]")
+            tempDir.resolve("model_quant.onnx").writeText("dummy")
+            val spec = LocalModelSpec.detect(tempDir)
+            assertTrue(spec is LocalModelSpec.SherpaSpec.SenseVoice)
+            val tokensFile = (spec as LocalModelSpec.SherpaSpec.SenseVoice).tokensFile
+            assertTrue(tokensFile.exists())
+            val lines = tokensFile.readLines()
+            assertEquals("<unk> 0", lines[0])
+            assertEquals("<s> 1", lines[1])
+            assertEquals("你好 2", lines[2])
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
 }
