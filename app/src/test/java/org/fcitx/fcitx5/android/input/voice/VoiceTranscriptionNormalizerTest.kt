@@ -95,6 +95,14 @@ class VoiceTranscriptionNormalizerTest {
             "https://custom-proxy.internal/v1/chat/completions",
             client.resolveOpenAIEndpoint("https://custom-proxy.internal/v1/chat/completions")
         )
+        assertEquals(
+            "http://192.168.124.1:8003/v1/audio/transcriptions",
+            client.resolveOpenAIEndpoint("http://192.168.124.1:8003/v1", "SenseVoiceSmall")
+        )
+        assertEquals(
+            "http://192.168.124.1:8003/v1/audio/transcriptions",
+            client.resolveOpenAIEndpoint("http://192.168.124.1:8003", "SenseVoiceSmall")
+        )
     }
 
     @Test(expected = IllegalArgumentException::class)
