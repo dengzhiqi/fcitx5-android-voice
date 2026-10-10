@@ -128,7 +128,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         if (isVirtualKeyboard) {
             hideStatusIcon()
         } else {
-            showStatusIcon(StatusIconMapping.fromEntry(fcitx.runImmediately { inputMethodEntryCached }))
+            updateStatusIcon(StatusIconMapping.fromEntry(fcitx.runImmediately { inputMethodEntryCached }))
         }
         window.window?.let {
             navbarMgr.evaluate(it, isVirtualKeyboard)
@@ -157,6 +157,14 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     private val prefs = AppPrefs.getInstance()
     private val inlineSuggestions by prefs.keyboard.inlineSuggestions
     private val ignoreSystemCursor by prefs.advanced.ignoreSystemCursor
+
+    private fun updateStatusIcon(iconRes: Int) {
+        if (!prefs.advanced.showStatusIcon.getValue()) {
+            hideStatusIcon()
+            return
+        }
+        showStatusIcon(iconRes)
+    }
 
     private val recreateInputViewPrefs: Array<ManagedPreference<*>> = arrayOf(
         prefs.keyboard.expandKeypressArea,
@@ -331,15 +339,15 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
                 handleDeleteSurrounding(before, after)
             }
             is FcitxEvent.IMChangeEvent -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (prefs.advanced.showStatusIcon.getValue() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     val im = event.data.uniqueName
                     val subtype = SubtypeManager.subtypeOf(im) ?: return
                     skipNextSubtypeChange = im
-                    // [^1]: notify system that input method subtype has changed
+                    // notify system that input method subtype has changed
                     switchInputMethod(InputMethodUtil.componentName, subtype)
                 }
                 if (inputDeviceMgr.evaluateOnInputMethodActivate()) {
-                    showStatusIcon(StatusIconMapping.fromEntry(event.data))
+                    updateStatusIcon(StatusIconMapping.fromEntry(event.data))
                 }
             }
             is FcitxEvent.SwitchInputMethodEvent -> {
@@ -814,7 +822,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
                 // support monitoring CursorAnchorInfo
                 candidatesView?.updateCursorAnchor(contentSize)
             }
-            showStatusIcon(StatusIconMapping.fromEntry(fcitx.runImmediately { inputMethodEntryCached }))
+            updateStatusIcon(StatusIconMapping.fromEntry(fcitx.runImmediately { inputMethodEntryCached }))
         }
     }
 

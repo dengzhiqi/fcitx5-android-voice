@@ -37,9 +37,18 @@ import java.io.File
 
 class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
     private var localModelPref: Preference? = null
-    private var customModelPathPref: EditTextPreference? = null
+    private var modelDirectoryPref: Preference? = null
     private var keepAlivePref: SwitchPreferenceCompat? = null
     private var downloadAfterFolderSelected = false
+
+    private fun modelDirectorySummary(): String {
+        val customPath = VoiceInputPreferences.customModelPath()
+        return if (customPath.isNotBlank()) {
+            customPath
+        } else {
+            LocalVoiceModel.defaultDirectory.absolutePath
+        }
+    }
 
     private val chooseDirectoryLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -50,7 +59,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             val path = uriToAbsolutePath(uri)
             if (!path.isNullOrBlank()) {
                 VoiceInputPreferences.setCustomModelPath(path)
-                customModelPathPref?.text = path
+                modelDirectoryPref?.summary = path
                 localModelPref?.summary = localModelSummary()
                 updateKeepAliveState()
                 val targetDir = File(path)
@@ -164,7 +173,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
             progressDialog.dismiss()
             if (success) {
                 VoiceInputPreferences.setCustomModelPath(targetDir.absolutePath)
-                customModelPathPref?.text = targetDir.absolutePath
+                modelDirectoryPref?.summary = modelDirectorySummary()
                 localModelPref?.summary = localModelSummary()
                 updateKeepAliveState()
                 AlertDialog.Builder(context)
@@ -240,39 +249,19 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
         localModelPref = modelPref
         screen.addPreference(modelPref)
 
-        screen.addPreference(Preference(context).apply {
+        val chooseDirPref = Preference(context).apply {
+            key = VoiceInputPreferences.CustomModelPath
             title = context.getString(R.string.voice_input_choose_model_directory)
-            summary = context.getString(R.string.voice_input_choose_model_directory_summary)
+            summary = modelDirectorySummary()
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 downloadAfterFolderSelected = false
                 chooseDirectoryLauncher.launch(null)
                 true
             }
-        })
-
-        val pathPref = EditTextPreference(context).apply {
-            key = VoiceInputPreferences.CustomModelPath
-            title = context.getString(R.string.voice_input_custom_model_path)
-            isIconSpaceReserved = false
-            isSingleLineTitle = false
-            summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
-                if (preference.text.isNullOrBlank()) {
-                    context.getString(R.string.voice_input_custom_model_path_default)
-                } else {
-                    preference.text
-                }
-            }
-            setOnPreferenceChangeListener { _, _ ->
-                view?.post {
-                    localModelPref?.summary = localModelSummary()
-                    updateKeepAliveState()
-                }
-                true
-            }
         }
-        customModelPathPref = pathPref
-        screen.addPreference(pathPref)
+        modelDirectoryPref = chooseDirPref
+        screen.addPreference(chooseDirPref)
 
         screen.addPreference(Preference(context).apply {
             title = context.getString(R.string.voice_input_test_local_model)
@@ -316,23 +305,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
         screen.addPreference(keepAliveSwitch)
         updateKeepAliveState()
 
-        screen.addPreference(ListPreference(context).apply {
-            key = VoiceInputPreferences.RemoteProvider
-            title = context.getString(R.string.voice_input_remote_provider)
-            entries = arrayOf(
-                context.getString(R.string.voice_input_provider_openai),
-                context.getString(R.string.voice_input_provider_google)
-            )
-            entryValues = arrayOf(
-                VoiceInputPreferences.ProviderOpenAI,
-                VoiceInputPreferences.ProviderGoogle
-            )
-            setDefaultValue(VoiceInputPreferences.ProviderOpenAI)
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            isIconSpaceReserved = false
-        })
-
-        screen.addPreference(EditTextPreference(context).apply {
+        val openAIEndpointPref = EditTextPreference(context).apply {
             key = VoiceInputPreferences.OpenAIEndpoint
             title = context.getString(R.string.voice_input_openai_endpoint)
             summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
@@ -348,9 +321,9 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
                 it.isSingleLine = true
             }
-        })
+        }
 
-        screen.addPreference(EditTextPreference(context).apply {
+        val openAIModelPref = EditTextPreference(context).apply {
             key = VoiceInputPreferences.OpenAIModel
             title = context.getString(R.string.voice_input_openai_model)
             summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
@@ -366,10 +339,11 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 it.inputType = InputType.TYPE_CLASS_TEXT
                 it.isSingleLine = true
             }
-        })
+        }
 
-        screen.addPreference(secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey))
-        screen.addPreference(Preference(context).apply {
+        val openAIKeyPref = secretPreference(R.string.voice_input_openai_key, VoiceInputPreferences.OpenAIKey)
+
+        val openAITestPref = Preference(context).apply {
             title = context.getString(R.string.voice_input_test_openai_connection)
             summary = context.getString(R.string.voice_input_test_openai_connection_summary)
             isIconSpaceReserved = false
@@ -405,9 +379,11 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 }
                 true
             }
-        })
-        screen.addPreference(secretPreference(R.string.voice_input_google_key, VoiceInputPreferences.GoogleKey))
-        screen.addPreference(Preference(context).apply {
+        }
+
+        val googleKeyPref = secretPreference(R.string.voice_input_google_key, VoiceInputPreferences.GoogleKey)
+
+        val googleTestPref = Preference(context).apply {
             title = context.getString(R.string.voice_input_test_google_connection)
             summary = context.getString(R.string.voice_input_test_google_connection_summary)
             isIconSpaceReserved = false
@@ -441,7 +417,50 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 }
                 true
             }
+        }
+
+        fun updateRemoteProviderDependencies(provider: String) {
+            val isOpenAI = provider == VoiceInputPreferences.ProviderOpenAI
+            val isGoogle = provider == VoiceInputPreferences.ProviderGoogle
+
+            openAIEndpointPref.isEnabled = isOpenAI
+            openAIModelPref.isEnabled = isOpenAI
+            openAIKeyPref.isEnabled = isOpenAI
+            openAITestPref.isEnabled = isOpenAI
+
+            googleKeyPref.isEnabled = isGoogle
+            googleTestPref.isEnabled = isGoogle
+        }
+
+        screen.addPreference(ListPreference(context).apply {
+            key = VoiceInputPreferences.RemoteProvider
+            title = context.getString(R.string.voice_input_remote_provider)
+            entries = arrayOf(
+                context.getString(R.string.voice_input_provider_openai),
+                context.getString(R.string.voice_input_provider_google)
+            )
+            entryValues = arrayOf(
+                VoiceInputPreferences.ProviderOpenAI,
+                VoiceInputPreferences.ProviderGoogle
+            )
+            setDefaultValue(VoiceInputPreferences.ProviderOpenAI)
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            isIconSpaceReserved = false
+            setOnPreferenceChangeListener { _, newValue ->
+                updateRemoteProviderDependencies(newValue as String)
+                true
+            }
         })
+
+        screen.addPreference(openAIEndpointPref)
+        screen.addPreference(openAIModelPref)
+        screen.addPreference(openAIKeyPref)
+        screen.addPreference(openAITestPref)
+
+        screen.addPreference(googleKeyPref)
+        screen.addPreference(googleTestPref)
+
+        updateRemoteProviderDependencies(VoiceInputPreferences.remoteProvider())
         screen.addPreference(EditTextPreference(context).apply {
             key = VoiceInputPreferences.Hotwords
             title = context.getString(R.string.voice_input_hotwords)
@@ -488,7 +507,7 @@ class VoiceInputSettingsFragment : PaddingPreferenceFragment() {
                 { startDownloadModel(customDir) },
                 {
                     VoiceInputPreferences.setCustomModelPath("")
-                    customModelPathPref?.text = ""
+                    modelDirectoryPref?.summary = modelDirectorySummary()
                     localModelPref?.summary = localModelSummary()
                     updateKeepAliveState()
                     startDownloadModel(defaultDir)

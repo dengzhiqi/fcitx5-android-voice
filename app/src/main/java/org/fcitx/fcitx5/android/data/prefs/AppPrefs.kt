@@ -56,6 +56,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             "keyboard_height_percent_base",
             KeyboardHeightPercentBase.DisplayMetrics
         )
+        val showStatusIcon = switch(R.string.show_status_icon, "show_status_icon", false)
     }
 
     inner class Keyboard : ManagedPreferenceCategory(R.string.virtual_keyboard, sharedPreferences) {

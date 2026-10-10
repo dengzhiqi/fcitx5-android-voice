@@ -14,8 +14,49 @@ class VoiceTranscriptionNormalizerTest {
             "如果还有其他需要处理的音频内容，你可以随时告诉我哦。<eop>"
 
         assertEquals(
-            "上滑取消，我已经验证过了能工作",
+            "上滑取消，我已经验证过了能工作。",
             VoiceTranscriptionNormalizer.normalize(raw)
+        )
+    }
+
+    @Test
+    fun formatsPunctuationAndEnsuresPeriodAtEnd() {
+        // SenseVoice 特殊 token 清洗、空格转逗号、句末句号
+        val rawSenseVoice = "<|zh|><|NEUTRAL|><|Speech|><|woitn|>今天天气非常好 我们一起去散步吧"
+        assertEquals(
+            "今天天气非常好，我们一起去散步吧。",
+            VoiceTranscriptionNormalizer.normalize(rawSenseVoice)
+        )
+
+        // 句末原本是逗号修正为句号
+        assertEquals(
+            "测试句末逗号自动修正。",
+            VoiceTranscriptionNormalizer.normalize("测试句末逗号自动修正，")
+        )
+
+        // 句末已有问号或感叹号时保留
+        assertEquals(
+            "你今天吃饭了吗？",
+            VoiceTranscriptionNormalizer.normalize("你今天吃饭了吗？")
+        )
+        assertEquals(
+            "太棒了！",
+            VoiceTranscriptionNormalizer.normalize("太棒了！")
+        )
+
+        // 英文标点在中文语境下转为全角标点，且保护数字小数点和时间
+        assertEquals(
+            "当前版本是3.14，会议时间是12:30。",
+            VoiceTranscriptionNormalizer.normalize("当前版本是3.14, 会议时间是12:30")
+        )
+    }
+
+    @Test
+    fun segmentsLongChineseSentenceWithConjunctions() {
+        val longSentence = "今天我们一起开会讨论项目进展但是大家对方案还有一些不同的意见"
+        assertEquals(
+            "今天我们一起开会讨论项目进展，但是大家对方案还有一些不同的意见。",
+            VoiceTranscriptionNormalizer.normalize(longSentence)
         )
     }
 
